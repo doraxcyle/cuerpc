@@ -106,7 +106,7 @@ struct is_functor<T, void_t<std::enable_if_t<!std::is_function<T>::value && has_
 };
 
 template <typename T>
-struct to_function {};
+struct to_function;
 
 template <typename T, typename R, typename... Args>
 struct to_function<R (T::*)(Args...) const> {
@@ -186,7 +186,8 @@ struct is_not_void_result<
     void_t<std::enable_if_t<
         function_args<std::decay_t<Func>>::arity == 2 &&
         std::is_same<error_code, typename function_args<std::decay_t<Func>>::template arg_t<0>>::value &&
-        std::is_same<R, typename function_args<std::decay_t<Func>>::template arg_t<1>>::value>>> : std::true_type {};
+        std::is_same<R, std::decay_t<typename function_args<std::decay_t<Func>>::template arg_t<1>>>::value>>>
+    : std::true_type {};
 
 // utilities functions
 struct utils final : safe_noncopyable {

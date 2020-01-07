@@ -24,13 +24,13 @@
 using namespace cue::rpc;
 
 struct test_add1 final {
-    void add(error_code code, int result) {
+    void add(error_code code, int&& result) {
         std::cout << "invoke test_add1 result " << result << std::endl;
     }
 };
 
 struct test_add2 final {
-    void add(error_code code, int result) {
+    void add(error_code code, const int& result) {
         std::cout << "invoke test_add2 result " << result << std::endl;
     }
 };
@@ -50,6 +50,14 @@ struct test_struct {
 
 int main(int argc, char** argv) {
     client c{"127.0.0.1", 10002};
+    std::thread run_thread{[&]() {
+        while (!c.stopped()) {
+            c.run_one();
+        }
+
+        // or
+        // c.run();
+    }};
     c.ready();
 
     std::cout << "client ready" << std::endl;
@@ -65,7 +73,7 @@ int main(int argc, char** argv) {
 
     register_method<int(int, int)> add2{"add"};
     c.async_invoke(add2(3, 4),
-                   [](error_code code, int result) { std::cout << "invoke add2 result " << result << std::endl; });
+                   [](error_code code, int&& result) { std::cout << "invoke add2 result " << result << std::endl; });
 
     register_method<void(int, int)> call1{"add"};
     c.async_invoke(call1(3, 4), [](error_code code) { std::cout << "invoke add2 result " << std::endl; });
@@ -87,6 +95,7 @@ int main(int argc, char** argv) {
     auto r6 = c.invoke(add6(11, 12));
     std::cout << "invoke add6 result " << r6 << std::endl;
 
+#if defined(ENABLE_CO_AWAIT)
     [&c]() -> awaitable {
         auto r7 = co_await c.async_invoke("add", make_method<int>(5, 0), use_awaitable);
         std::cout << "invoke add7 result " << r7 << std::endl;
@@ -97,6 +106,7 @@ int main(int argc, char** argv) {
         auto r8 = co_await c.async_invoke(add8(5, 100), use_awaitable);
         std::cout << "invoke add8 result " << r8 << std::endl;
     }();
+#endif // defined(ENABLE_CO_AWAIT)
 
     c.invoke_oneway("add", make_method<void>(13, 14));
 
@@ -115,9 +125,15 @@ int main(int argc, char** argv) {
         std::cout << "invoke great result " << result.msg << std::endl;
     });
 
-    std::cout << "end" << std::endl;
+    std::thread stop_thread{[&]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds{5000});
+        c.stop();
+    }};
 
-    c.run();
+    stop_thread.join();
+    run_thread.join();
+
+    std::cout << "end" << std::endl;
 
     return 0;
 }
