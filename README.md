@@ -1,5 +1,6 @@
 # cuerpc
 
+[![Build Status](https://travis-ci.org/xcyl/cuerpc.svg?branch=master)](https://travis-ci.org/xcyl/cuerpc)
 [![GitHub license](https://img.shields.io/badge/license-Apache2.0-blue.svg)](https://raw.githubusercontent.com/xcyl/cuerpc/master/LICENSE)
 
 ## 简介
