@@ -101,7 +101,6 @@ public:
     template <typename Host, typename = std::enable_if_t<!std::is_same<Host, client>::value>>
     client(Host&& host, unsigned short port) noexcept
         : host_{std::forward<Host>(host)}, port_{port}, engine_work_{engine_}, socket_{engine_} {
-        thread_ = std::make_unique<std::thread>([this]() { engine_.run(); });
     }
 
     bool ready(uint32_t milliseconds = 0) {
@@ -110,18 +109,28 @@ public:
         }
 
         do_connect();
-        if (milliseconds) {
+
+        if (milliseconds > 0) {
             return connect_wait_event_.wait_for(milliseconds);
         }
-
         connect_wait_event_.wait();
         return true;
     }
 
     void run() {
-        if (thread_->joinable()) {
-            thread_->join();
-        }
+        engine_.run();
+    }
+
+    std::size_t run_one() {
+        return engine_.run_one();
+    }
+
+    bool stopped() const {
+        return engine_.stopped();
+    }
+
+    void stop() {
+        engine_.stop();
     }
 
     template <uint32_t Timeout = 0, typename... Args>
@@ -260,11 +269,11 @@ private:
               typename = std::enable_if_t<!std::is_void<R>::value>>
     std::enable_if_t<detail::is_not_void_result<R, Func>::value> async_invoke_impl(method<R, Tuple>&& method,
                                                                                    Func T::*func, Self self) {
-        async_invoke_impl<Timeout>(std::move(method), [func, self](error_code code, R result) {
+        async_invoke_impl<Timeout>(std::move(method), [func, self](error_code code, R&& result) {
             if (self) {
-                (self->*func)(code, result);
+                (self->*func)(code, std::move(result));
             } else {
-                (T{}.*func)(code, result);
+                (T{}.*func)(code, std::move(result));
             }
         });
     }
@@ -475,7 +484,6 @@ private:
     boost::asio::io_service engine_;
     boost::asio::io_service::work engine_work_;
     boost::asio::ip::tcp::socket socket_;
-    std::unique_ptr<std::thread> thread_;
     std::atomic_bool ready_{false};
     detail::wait_event connect_wait_event_;
     char match_[1];
