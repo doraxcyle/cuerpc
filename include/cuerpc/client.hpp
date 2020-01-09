@@ -52,9 +52,9 @@ public:
     method(Tuple&& t, Name&& name) noexcept : t_{std::move(t)}, name_{std::forward<Name>(name)} {
     }
 
-    const std::string& name() const noexcept {
+    std::string name() const noexcept {
         assert(!name_.empty());
-        return name_;
+        return std::move(name_);
     }
 
     template <typename Name>
@@ -62,8 +62,8 @@ public:
         name_ = std::forward<Name>(name);
     }
 
-    const Tuple& args() const noexcept {
-        return t_;
+    Tuple args() const noexcept {
+        return std::move(t_);
     }
 
 private:
@@ -98,9 +98,13 @@ decltype(auto) make_method(Args&&... args) noexcept {
 
 class client final : safe_noncopyable {
 public:
-    template <typename Host, typename = std::enable_if_t<!std::is_same<Host, client>::value>>
+    template <typename Host>
     client(Host&& host, unsigned short port) noexcept
-        : host_{std::forward<Host>(host)}, port_{port}, engine_work_{engine_}, socket_{engine_} {
+        : host_{std::forward<Host>(host)},
+          port_{port},
+          engine_work_{engine_},
+          socket_{engine_},
+          heartbeat_timer_{engine_} {
     }
 
     bool ready(uint32_t milliseconds = 0) {
@@ -108,13 +112,15 @@ public:
             return true;
         }
 
-        do_connect();
+        std::call_once(flag_, [this, milliseconds]() {
+            if (milliseconds > 0) {
+                reconnect_max_count_ = milliseconds / reconnect_default_timeout_;
+            }
+            do_connect();
+        });
 
-        if (milliseconds > 0) {
-            return connect_wait_event_.wait_for(milliseconds);
-        }
         connect_wait_event_.wait();
-        return true;
+        return ready_;
     }
 
     void run() {
@@ -200,7 +206,7 @@ private:
             std::unique_lock<std::mutex> lock{invokes_mutex_};
             invokes_.emplace(request_id, std::move(func_adapter));
         }
-        request(request_id, Timeout, detail::stub::pack(method.name(), method.args()));
+        request(request_id, Timeout, detail::stub::pack(method.name(), method.args()), detail::request_type::request);
         return std::get<1>(adapter).get();
     }
 
@@ -231,7 +237,7 @@ private:
             std::unique_lock<std::mutex> lock{invokes_mutex_};
             invokes_.emplace(request_id, std::move(func_adapter));
         }
-        request(request_id, Timeout, detail::stub::pack(method.name(), method.args()));
+        request(request_id, Timeout, detail::stub::pack(method.name(), method.args()), detail::request_type::request);
         return std::get<1>(adapter).get();
     }
 
@@ -286,7 +292,7 @@ private:
 
     template <typename R, typename Tuple>
     void invoke_oneway_impl(method<R, Tuple>&& method) {
-        request(request_id_++, 0, detail::stub::pack(method.name(), method.args()), true);
+        request(request_id_++, 0, detail::stub::pack(method.name(), method.args()), detail::request_type::oneway);
     }
 
     void do_connect() {
@@ -295,19 +301,77 @@ private:
         socket_.async_connect({endpoint, port_}, [this](boost::system::error_code code) {
             if (code) {
                 ready_ = false;
-                do_connect();
+                if (++reconnect_count_ > reconnect_max_count_) {
+                    connect_wait_event_.stop();
+                    stop();
+                } else {
+                    std::this_thread::sleep_for(std::chrono::milliseconds{reconnect_default_timeout_});
+                    do_reconnect();
+                }
+            } else {
+                ready_ = true;
+                reconnect_count_ = 0;
+                do_read_match();
+                connect_wait_event_.stop();
+                do_heartbeat();
+                // for reconnect success
+                std::unique_lock<std::mutex> lock{write_queue_mutex_};
+                if (!write_queue_.empty()) {
+                    lock.unlock();
+                    do_write();
+                }
+            }
+        });
+    }
+
+    void do_reconnect() {
+        socket_ = boost::asio::ip::tcp::socket{engine_};
+        do_connect();
+    }
+
+    void close() {
+        ready_ = false;
+        boost::system::error_code code;
+        socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, code);
+        socket_.close(code);
+        do_reconnect();
+    }
+
+    void close_all() {
+        heartbeat_timer_.cancel();
+        close();
+    }
+
+    void do_heartbeat() {
+        heartbeat_timer_.expires_from_now(std::chrono::seconds{heartbeat_interval_});
+        heartbeat_timer_.async_wait([this](boost::system::error_code code) {
+            if (!code) {
+                heartbeat_check_response_ = false;
+                request(request_id_++, 0, "", detail::request_type::heartbeat);
             }
 
-            ready_ = true;
-            do_read_match();
-            connect_wait_event_.stop();
+            if (!heartbeat_check_response_) {
+                if (++heartbeat_failed_count_ >= heartbeat_failed_max_count_) {
+                    close();
+                } else {
+                    do_heartbeat();
+                }
+            }
         });
+    }
+
+    void redo_heartbeat() {
+        heartbeat_failed_count_ = 0;
+        heartbeat_check_response_ = true;
+        heartbeat_timer_.cancel();
+        do_heartbeat();
     }
 
     void do_read_match() {
         boost::asio::async_read(socket_, boost::asio::buffer(match_),
                                 [this](boost::system::error_code code, std::size_t bytes_transferred) {
                                     if (code) {
+                                        close_all();
                                         return;
                                     }
 
@@ -323,8 +387,11 @@ private:
         boost::asio::async_read(socket_, boost::asio::buffer(response_header_),
                                 [this](boost::system::error_code code, std::size_t bytes_transferred) {
                                     if (code) {
+                                        close_all();
                                         return;
                                     }
+
+                                    redo_heartbeat();
 
                                     header_ = *reinterpret_cast<detail::response_header*>(response_header_);
                                     // from big endian
@@ -346,6 +413,7 @@ private:
         boost::asio::async_read(socket_, boost::asio::buffer(payload_.data(), header_.payload_length),
                                 [this](boost::system::error_code code, std::size_t bytes_transferred) {
                                     if (code) {
+                                        close_all();
                                         return;
                                     }
 
@@ -374,10 +442,9 @@ private:
         invokes_.erase(header_.request_id);
     }
 
-    void request(uint64_t request_id, uint32_t timeout, std::string&& payload, bool oneway = false) {
-        assert(!payload.empty());
+    void request(uint64_t request_id, uint32_t timeout, std::string&& payload, detail::request_type request_type) {
         detail::request req;
-        req.header.type = oneway ? detail::request_type::oneway : detail::request_type::request;
+        req.header.type = request_type;
         req.header.request_id = request_id;
         req.header.timeout = timeout;
         req.header.payload_length = payload.size();
@@ -414,6 +481,7 @@ private:
         boost::asio::async_write(socket_, buffers,
                                  [this](boost::system::error_code code, std::size_t bytes_transferred) {
                                      if (code) {
+                                         close_all();
                                          return;
                                      }
 
@@ -443,17 +511,18 @@ private:
     public:
         callback_adapter(boost::asio::io_service& engine, uint64_t request_id, uint32_t timeout, result_handler handler,
                          std::function<void(uint64_t)> releaser) noexcept
-            : request_id_{request_id},
+            : engine_{engine},
+              request_id_{request_id},
               timeout_{timeout},
               handler_{std::move(handler)},
-              releaser_{std::move(releaser)},
-              timer_{engine} {
+              releaser_{std::move(releaser)} {
         }
 
         void start() {
             if (timeout_ > 0) {
-                timer_.expires_from_now(std::chrono::milliseconds{timeout_});
-                timer_.async_wait([this, self = this->shared_from_this()](boost::system::error_code code) {
+                timer_ = std::make_unique<boost::asio::steady_timer>(engine_);
+                timer_->expires_from_now(std::chrono::milliseconds{timeout_});
+                timer_->async_wait([this, self = this->shared_from_this()](boost::system::error_code code) {
                     if (!code) {
                         releaser_(request_id_);
                     }
@@ -463,7 +532,7 @@ private:
 
         void stop() {
             if (timeout_ > 0) {
-                timer_.cancel();
+                timer_->cancel();
             }
         }
 
@@ -472,11 +541,12 @@ private:
         }
 
     private:
+        boost::asio::io_service& engine_;
         uint64_t request_id_;
         uint32_t timeout_{0};
         result_handler handler_;
         std::function<void(uint64_t)> releaser_;
-        boost::asio::steady_timer timer_;
+        std::unique_ptr<boost::asio::steady_timer> timer_;
     };
 
     std::string host_;
@@ -484,8 +554,17 @@ private:
     boost::asio::io_service engine_;
     boost::asio::io_service::work engine_work_;
     boost::asio::ip::tcp::socket socket_;
+    std::once_flag flag_;
+    unsigned reconnect_max_count_{5};
+    unsigned reconnect_count_{0};
+    const unsigned reconnect_default_timeout_{1000};
     std::atomic_bool ready_{false};
     detail::wait_event connect_wait_event_;
+    boost::asio::steady_timer heartbeat_timer_;
+    const unsigned heartbeat_interval_{15};
+    bool heartbeat_check_response_{true};
+    unsigned heartbeat_failed_count_{0};
+    const unsigned heartbeat_failed_max_count_{3};
     char match_[1];
     char response_header_[sizeof(detail::response_header)];
     detail::response_header header_;
