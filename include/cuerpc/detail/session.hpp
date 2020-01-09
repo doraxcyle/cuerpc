@@ -26,6 +26,7 @@
 #include <mutex>
 #include <vector>
 #include <boost/asio.hpp>
+#include <boost/asio/steady_timer.hpp>
 
 #include "cuerpc/detail/common.hpp"
 #include "cuerpc/detail/endian.hpp"
@@ -40,17 +41,18 @@ namespace detail {
 class session final : public std::enable_shared_from_this<session>, safe_noncopyable {
 public:
     session(std::function<void(std::shared_ptr<session>, std::shared_ptr<request>)> handler,
-            boost::asio::io_service& io_service) noexcept
-        : socket_{io_service}, handler_{std::move(handler)} {
+            boost::asio::io_service& engine) noexcept
+        : socket_{engine}, heartbeat_check_timer_{engine}, handler_{std::move(handler)} {
     }
 
-    virtual ~session() noexcept = default;
+    ~session() noexcept = default;
 
     tcp_socket& socket() noexcept {
         return socket_;
     }
 
     void start() {
+        do_check_heartbeat();
         do_read_match();
     }
 
@@ -65,11 +67,34 @@ public:
     }
 
 private:
+    void close() {
+        boost::system::error_code code;
+        socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, code);
+        socket_.close(code);
+    }
+
+    void close_all() {
+        heartbeat_check_timer_.cancel();
+        close();
+    }
+
+    void do_check_heartbeat() {
+        heartbeat_check_timer_.cancel();
+        heartbeat_check_timer_.expires_from_now(std::chrono::seconds{heartbeat_check_interval_});
+        heartbeat_check_timer_.async_wait([this, self = this->shared_from_this()](boost::system::error_code code) {
+            if (!code) {
+                // heartbeat/request timeout
+                close();
+            }
+        });
+    }
+
     void do_read_match() {
         boost::asio::async_read(
             socket_, boost::asio::buffer(match_),
             [this, self = this->shared_from_this()](boost::system::error_code code, std::size_t bytes_transferred) {
                 if (code) {
+                    close_all();
                     return;
                 }
 
@@ -86,6 +111,7 @@ private:
             socket_, boost::asio::buffer(request_header_),
             [this, self = this->shared_from_this()](boost::system::error_code code, std::size_t bytes_transferred) {
                 if (code) {
+                    close_all();
                     return;
                 }
 
@@ -95,10 +121,17 @@ private:
                 header_.timeout = from_be(header_.timeout);
                 header_.payload_length = from_be(header_.payload_length);
 
+                do_check_heartbeat();
+
                 switch (header_.type) {
-                case request_type::heartbeat:
+                case request_type::heartbeat: {
+                    response_header header;
+                    header.type = request_type::heartbeat;
+                    header.request_id = header_.request_id;
+                    reply({std::move(header), ""});
                     do_read_match();
                     break;
+                }
                 case request_type::request:
                 case request_type::oneway:
                     do_read_payload();
@@ -115,6 +148,7 @@ private:
             socket_, boost::asio::buffer(payload_.data(), header_.payload_length),
             [this, self = this->shared_from_this()](boost::system::error_code code, std::size_t bytes_transferred) {
                 if (code) {
+                    close_all();
                     return;
                 }
 
@@ -151,6 +185,7 @@ private:
             socket_, buffers,
             [this, self = this->shared_from_this()](boost::system::error_code code, std::size_t bytes_transferred) {
                 if (code) {
+                    close_all();
                     return;
                 }
 
@@ -170,6 +205,8 @@ private:
     }
 
     tcp_socket socket_;
+    boost::asio::steady_timer heartbeat_check_timer_;
+    const unsigned heartbeat_check_interval_{90};
     char match_[1];
     char request_header_[sizeof(request_header)];
     request_header header_;

@@ -58,79 +58,82 @@ int main(int argc, char** argv) {
         // or
         // c.run();
     }};
-    c.ready();
 
-    std::cout << "client ready" << std::endl;
+    if (c.ready(10000)) {
+        std::cout << "client ready" << std::endl;
 
-    c.async_invoke("add", make_method<int>(1, 2),
-                   [](error_code code, int result) { std::cout << "invoke add1 result " << result << std::endl; });
+        c.async_invoke("add", make_method<int>(1, 2),
+                       [](error_code code, int result) { std::cout << "invoke add1 result " << result << std::endl; });
 
-    c.async_invoke("add", make_method<int>(1, 2), foo2);
+        c.async_invoke("add", make_method<int>(1, 2), foo2);
 
-    test_add1 ta1;
-    c.async_invoke("add", make_method<int>(1, 2), &test_add1::add, &ta1);
-    c.async_invoke("add", make_method<int>(1, 2), &test_add1::add);
+        test_add1 ta1;
+        c.async_invoke("add", make_method<int>(1, 2), &test_add1::add, &ta1);
+        c.async_invoke("add", make_method<int>(1, 2), &test_add1::add);
 
-    register_method<int(int, int)> add2{"add"};
-    c.async_invoke(add2(3, 4),
-                   [](error_code code, int&& result) { std::cout << "invoke add2 result " << result << std::endl; });
+        register_method<int(int, int)> add2{"add"};
+        c.async_invoke(add2(3, 4), [](error_code code, int&& result) {
+            std::cout << "invoke add2 result " << result << std::endl;
+        });
 
-    register_method<void(int, int)> call1{"add"};
-    c.async_invoke(call1(3, 4), [](error_code code) { std::cout << "invoke add2 result " << std::endl; });
+        register_method<void(int, int)> call1{"add"};
+        c.async_invoke(call1(3, 4), [](error_code code) { std::cout << "invoke add2 result " << std::endl; });
 
-    test_add2 ta2;
-    c.async_invoke(add2(3, 4), &test_add2::add, &ta2);
-    c.async_invoke(add2(3, 4), &test_add2::add);
+        test_add2 ta2;
+        c.async_invoke(add2(3, 4), &test_add2::add, &ta2);
+        c.async_invoke(add2(3, 4), &test_add2::add);
 
-    auto r3 = c.async_invoke("add", make_method<int>(5, 6), use_std_future);
-    std::cout << "invoke add3 result " << r3.get() << std::endl;
+        auto r3 = c.async_invoke("add", make_method<int>(5, 6), use_std_future);
+        std::cout << "invoke add3 result " << r3.get() << std::endl;
 
-    auto r4 = c.async_invoke("add", make_method<void>(5, 6), use_std_future);
-    r4.get();
+        auto r4 = c.async_invoke("add", make_method<void>(5, 6), use_std_future);
+        r4.get();
 
-    auto r5 = c.invoke("add", make_method<int>(9, 10));
-    std::cout << "invoke add5 result " << r5 << std::endl;
+        auto r5 = c.invoke("add", make_method<int>(9, 10));
+        std::cout << "invoke add5 result " << r5 << std::endl;
 
-    register_method<int(int, int)> add6{"add"};
-    auto r6 = c.invoke(add6(11, 12));
-    std::cout << "invoke add6 result " << r6 << std::endl;
+        register_method<int(int, int)> add6{"add"};
+        auto r6 = c.invoke(add6(11, 12));
+        std::cout << "invoke add6 result " << r6 << std::endl;
 
 #if defined(ENABLE_CO_AWAIT)
-    [&c]() -> awaitable {
-        auto r7 = co_await c.async_invoke("add", make_method<int>(5, 0), use_awaitable);
-        std::cout << "invoke add7 result " << r7 << std::endl;
-    }();
+        [&c]() -> awaitable {
+            auto r7 = co_await c.async_invoke("add", make_method<int>(5, 0), use_awaitable);
+            std::cout << "invoke add7 result " << r7 << std::endl;
+        }();
 
-    [&c]() -> awaitable {
-        register_method<int(int, int)> add8{"add"};
-        auto r8 = co_await c.async_invoke(add8(5, 100), use_awaitable);
-        std::cout << "invoke add8 result " << r8 << std::endl;
-    }();
+        [&c]() -> awaitable {
+            register_method<int(int, int)> add8{"add"};
+            auto r8 = co_await c.async_invoke(add8(5, 100), use_awaitable);
+            std::cout << "invoke add8 result " << r8 << std::endl;
+        }();
 #endif // defined(ENABLE_CO_AWAIT)
 
-    c.invoke_oneway("add", make_method<void>(13, 14));
+        c.invoke_oneway("add", make_method<void>(13, 14));
 
-    register_method<void(int, int)> add8{"add"};
-    c.invoke_oneway(add8(15, 16));
+        register_method<void(int, int)> add8{"add"};
+        c.invoke_oneway(add8(15, 16));
 
-    c.async_invoke("echo", make_method<std::string>("invoke echo"), [](error_code code, std::string&& result) {
-        std::cout << "invoke echo result " << result << std::endl;
-    });
+        c.async_invoke("echo", make_method<std::string>("invoke echo"), [](error_code code, std::string&& result) {
+            std::cout << "invoke echo result " << result << std::endl;
+        });
 
-    c.async_invoke(
-        "good", make_method<std::string>(test_struct{0, "good"}),
-        [](error_code code, const std::string& result) { std::cout << "invoke good result " << result << std::endl; });
+        c.async_invoke("good", make_method<std::string>(test_struct{0, "good"}),
+                       [](error_code code, const std::string& result) {
+                           std::cout << "invoke good result " << result << std::endl;
+                       });
 
-    c.async_invoke("great", make_method<test_struct>("great"), [](error_code code, const test_struct& result) {
-        std::cout << "invoke great result " << result.msg << std::endl;
-    });
+        c.async_invoke("great", make_method<test_struct>("great"), [](error_code code, const test_struct& result) {
+            std::cout << "invoke great result " << result.msg << std::endl;
+        });
 
-    std::thread stop_thread{[&]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds{5000});
-        c.stop();
-    }};
+        std::thread stop_thread{[&]() {
+            std::this_thread::sleep_for(std::chrono::milliseconds{5000});
+            c.stop();
+        }};
 
-    stop_thread.join();
+        stop_thread.join();
+    }
     run_thread.join();
 
     std::cout << "end" << std::endl;
