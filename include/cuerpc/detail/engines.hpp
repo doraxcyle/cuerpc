@@ -51,7 +51,7 @@ public:
         if (index_ == io_contexts_.size()) {
             index_ = 0;
         }
-        return *io_contexts_.at(index_++);
+        return *io_contexts_[index_++];
     }
 
     void run() {
