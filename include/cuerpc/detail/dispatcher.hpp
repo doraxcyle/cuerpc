@@ -157,15 +157,15 @@ private:
     }
 
     template <typename R, typename Func, typename Tuple>
-    inline static std::enable_if_t<std::is_void<R>::value, std::string> apply(Func func, Tuple&& t) {
-        constexpr auto tuple_size = std::tuple_size<std::decay_t<Tuple>>::value;
+    inline static std::enable_if_t<std::is_void<R>{}, std::string> apply(Func func, Tuple&& t) {
+        constexpr auto tuple_size = std::tuple_size<std::decay_t<Tuple>>{};
         apply_proxy(std::move(func), std::forward<Tuple>(t), std::make_index_sequence<tuple_size>{});
         return std::string{};
     }
 
     template <typename R, typename Func, typename Tuple>
-    inline static std::enable_if_t<!std::is_void<R>::value, std::string> apply(Func func, Tuple&& t) {
-        constexpr auto tuple_size = std::tuple_size<std::decay_t<Tuple>>::value;
+    inline static std::enable_if_t<!std::is_void<R>{}, std::string> apply(Func func, Tuple&& t) {
+        constexpr auto tuple_size = std::tuple_size<std::decay_t<Tuple>>{};
         auto result = apply_proxy(std::move(func), std::forward<Tuple>(t), std::make_index_sequence<tuple_size>{});
         return stub::pack(std::move(result));
     }
