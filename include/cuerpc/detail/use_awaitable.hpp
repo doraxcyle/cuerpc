@@ -80,7 +80,7 @@ private:
     template <typename>
     friend class detail::awaitable_promise;
 
-    awaitable_future(detail::awaitable_promise<T>* promise) noexcept : promise_{promise} {
+    explicit awaitable_future(detail::awaitable_promise<T>* promise) noexcept : promise_{promise} {
     }
 
     detail::awaitable_promise<T>* promise_{nullptr};

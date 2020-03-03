@@ -77,7 +77,7 @@ class register_method;
 template <typename R, typename... Args>
 class register_method<R(Args...)> final {
 public:
-    template <typename Name, typename = std::enable_if_t<!std::is_same<Name, register_method>::value>>
+    template <typename Name, typename = std::enable_if_t<!std::is_same<Name, register_method>{}>>
     explicit register_method(Name&& name) noexcept : name_{std::forward<Name>(name)} {
     }
 
@@ -259,9 +259,9 @@ private:
     }
 
     template <uint32_t Timeout, typename R, typename Tuple, typename T, typename Func, typename Self,
-              typename = std::enable_if_t<std::is_void<R>::value>>
-    std::enable_if_t<detail::is_void_result<Func>::value> async_invoke_impl(method<R, Tuple>&& method, Func T::*func,
-                                                                            Self self) {
+              typename = std::enable_if_t<std::is_void<R>{}>>
+    std::enable_if_t<detail::is_void_result<Func>{}> async_invoke_impl(method<R, Tuple>&& method, Func T::*func,
+                                                                       Self self) {
         async_invoke_impl<Timeout>(std::move(method), [func, self](error_code code) {
             if (self) {
                 (self->*func)(code);
@@ -272,9 +272,9 @@ private:
     }
 
     template <uint32_t Timeout, typename R, typename Tuple, typename T, typename Func, typename Self,
-              typename = std::enable_if_t<!std::is_void<R>::value>>
-    std::enable_if_t<detail::is_not_void_result<R, Func>::value> async_invoke_impl(method<R, Tuple>&& method,
-                                                                                   Func T::*func, Self self) {
+              typename = std::enable_if_t<!std::is_void<R>{}>>
+    std::enable_if_t<detail::is_not_void_result<R, Func>{}> async_invoke_impl(method<R, Tuple>&& method, Func T::*func,
+                                                                              Self self) {
         async_invoke_impl<Timeout>(std::move(method), [func, self](error_code code, R&& result) {
             if (self) {
                 (self->*func)(code, std::move(result));

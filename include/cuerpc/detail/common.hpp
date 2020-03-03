@@ -52,7 +52,7 @@ public:
     explicit invoke_exception(error_code code) noexcept : std::runtime_error{detail::code_to_msg(code)}, code_{code} {
     }
 
-    template <typename Msg, typename = std::enable_if_t<!std::is_same<Msg, invoke_exception>::value>>
+    template <typename Msg, typename = std::enable_if_t<!std::is_same<Msg, invoke_exception>{}>>
     explicit invoke_exception(Msg&& msg) noexcept : std::runtime_error{std::forward<Msg>(msg)}, code_{} {
     }
 
@@ -102,8 +102,7 @@ template <typename T, typename = void>
 struct is_functor : std::false_type {};
 
 template <typename T>
-struct is_functor<T, void_t<std::enable_if_t<!std::is_function<T>::value && has_operator<T>::value>>> : std::true_type {
-};
+struct is_functor<T, void_t<std::enable_if_t<!std::is_function<T>{} && has_operator<T>{}>>> : std::true_type {};
 
 template <typename T>
 struct to_function;
@@ -172,9 +171,9 @@ struct is_void_result : std::false_type {};
 
 template <typename Func>
 struct is_void_result<
-    Func, void_t<std::enable_if_t<
-              function_args<std::decay_t<Func>>::arity == 1 &&
-              std::is_same<error_code, typename function_args<std::decay_t<Func>>::template arg_t<0>>::value>>>
+    Func,
+    void_t<std::enable_if_t<function_args<std::decay_t<Func>>::arity == 1 &&
+                            std::is_same<error_code, typename function_args<std::decay_t<Func>>::template arg_t<0>>{}>>>
     : std::true_type {};
 
 template <typename R, typename Func, typename = void>
@@ -185,8 +184,8 @@ struct is_not_void_result<
     R, Func,
     void_t<std::enable_if_t<
         function_args<std::decay_t<Func>>::arity == 2 &&
-        std::is_same<error_code, typename function_args<std::decay_t<Func>>::template arg_t<0>>::value &&
-        std::is_same<R, std::decay_t<typename function_args<std::decay_t<Func>>::template arg_t<1>>>::value>>>
+        std::is_same<error_code, typename function_args<std::decay_t<Func>>::template arg_t<0>>{} &&
+        std::is_same<R, std::decay_t<typename function_args<std::decay_t<Func>>::template arg_t<1>>>{}>>>
     : std::true_type {};
 
 // utilities functions
