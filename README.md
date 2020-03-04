@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.org/xcyl/cuerpc.svg?branch=master)](https://travis-ci.org/xcyl/cuerpc)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/6960229a428e4e4ba00ae7e7690c5da3)](https://www.codacy.com/manual/xcyl/cuerpc?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=xcyl/cuerpc&amp;utm_campaign=Badge_Grade)
 [![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/xcyl/cuerpc.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/xcyl/cuerpc/context:cpp)
+[![language](https://img.shields.io/badge/language-C++14-red.svg)](https://en.wikipedia.org/wiki/C++14)
 [![GitHub license](https://img.shields.io/badge/license-Apache2.0-blue.svg)](https://raw.githubusercontent.com/xcyl/cuerpc/master/LICENSE)
 
 ## 简介
