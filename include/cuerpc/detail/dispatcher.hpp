@@ -60,7 +60,7 @@ public:
         try {
             invoke_name = std::get<0>(stub::unpack<std::tuple<std::string>>(req->payload));
         } catch (...) {
-            reply(session, req, "", code_type::exception);
+            reply(session, req, "", error_code::exception);
             return;
         }
         const auto it = invokes_.find(invoke_name);
@@ -69,7 +69,7 @@ public:
         }
 
         // nonsupport
-        reply(session, req, "", code_type::nonsupport);
+        reply(session, req, "", error_code::nonsupport);
     }
 
 private:
@@ -128,7 +128,7 @@ private:
         try {
             args_tuple = stub::unpack<std::tuple<std::string, std::tuple<std::decay_t<Args>...>>>(req->payload);
         } catch (...) {
-            reply(session, req, "", code_type::exception);
+            reply(session, req, "", error_code::exception);
             return;
         }
         auto payload = apply<R>(std::move(func), std::move(std::get<1>(args_tuple)));
@@ -142,7 +142,7 @@ private:
         try {
             args_tuple = stub::unpack<std::tuple<std::string, std::tuple<std::decay_t<Args>...>>>(req->payload);
         } catch (...) {
-            reply(session, req, "", code_type::exception);
+            reply(session, req, "", error_code::exception);
             return;
         }
         auto wrapper = [=](Args... args) {
@@ -176,7 +176,7 @@ private:
     }
 
     inline static void reply(std::shared_ptr<session> session, std::shared_ptr<request> req, std::string&& payload,
-                             code_type code = code_type::success) {
+                             error_code code = error_code::success) {
         if (req->header.type == request_type::oneway) {
             return;
         }
