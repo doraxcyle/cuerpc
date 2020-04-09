@@ -107,7 +107,7 @@ public:
           heartbeat_timer_{engine_} {
     }
 
-    bool ready(uint32_t milliseconds = 0) {
+    bool ready(std::uint32_t milliseconds = 0) {
         if (ready_) {
             return true;
         }
@@ -139,12 +139,12 @@ public:
         engine_.stop();
     }
 
-    template <uint32_t Timeout = 0, typename... Args>
+    template <std::uint32_t Timeout = 0, typename... Args>
     auto invoke(Args&&... args) {
         return invoke_impl<Timeout>(std::forward<Args>(args)...);
     }
 
-    template <uint32_t Timeout = 0, typename... Args>
+    template <std::uint32_t Timeout = 0, typename... Args>
     auto async_invoke(Args&&... args) {
         return async_invoke_impl<Timeout>(std::forward<Args>(args)...);
     }
@@ -155,13 +155,13 @@ public:
     }
 
 private:
-    template <uint32_t Timeout, typename Name, typename R, typename Tuple>
+    template <std::uint32_t Timeout, typename Name, typename R, typename Tuple>
     auto invoke_impl(Name&& name, method<R, Tuple>&& method) {
         method.name(std::forward<Name>(name));
         return invoke_impl<Timeout>(std::move(method));
     }
 
-    template <uint32_t Timeout, typename R, typename Tuple>
+    template <std::uint32_t Timeout, typename R, typename Tuple>
     auto invoke_impl(method<R, Tuple>&& method) {
         auto result = async_invoke<Timeout>(std::move(method), use_std_future);
         if (Timeout == 0) {
@@ -179,22 +179,22 @@ private:
         return result.get();
     }
 
-    template <uint32_t Timeout, typename Name, typename R, typename Tuple, typename Func>
+    template <std::uint32_t Timeout, typename Name, typename R, typename Tuple, typename Func>
     auto async_invoke_impl(Name&& name, method<R, Tuple>&& method, Func&& func) {
         method.name(std::forward<Name>(name));
         return async_invoke_impl<Timeout>(std::move(method), std::forward<Func>(func), std::is_void<R>{});
     }
 
-    template <uint32_t Timeout, typename R, typename Tuple, typename Func>
+    template <std::uint32_t Timeout, typename R, typename Tuple, typename Func>
     auto async_invoke_impl(method<R, Tuple>&& method, Func&& func) {
         return async_invoke_impl<Timeout>(std::move(method), std::forward<Func>(func), std::is_void<R>{});
     }
 
-    template <uint32_t Timeout, typename R, typename Tuple, typename Func>
+    template <std::uint32_t Timeout, typename R, typename Tuple, typename Func>
     auto async_invoke_impl(method<R, Tuple>&& method, Func&& func, std::true_type) {
         using adapter_type = detail::callback_adapter<std::decay_t<Func>, void(error_code)>;
         auto adapter = adapter_type::traits(std::forward<Func>(func));
-        const uint64_t request_id{request_id_++};
+        const std::uint64_t request_id{request_id_++};
         SCOPE_BLOCK {
             auto callback = [func = std::move(std::get<0>(adapter))](error_code code, std::string&& payload) {
                 func(code);
@@ -210,11 +210,11 @@ private:
         return std::get<1>(adapter).get();
     }
 
-    template <uint32_t Timeout, typename R, typename Tuple, typename Func>
+    template <std::uint32_t Timeout, typename R, typename Tuple, typename Func>
     auto async_invoke_impl(method<R, Tuple>&& method, Func&& func, std::false_type) {
         using adapter_type = detail::callback_adapter<std::decay_t<Func>, void(error_code, R)>;
         auto adapter = adapter_type::traits(std::forward<Func>(func));
-        const uint64_t request_id{request_id_++};
+        const std::uint64_t request_id{request_id_++};
         SCOPE_BLOCK {
             auto callback = [func = std::move(std::get<0>(adapter))](error_code code, std::string&& payload) {
                 if (code != error_code::success || payload.empty()) {
@@ -241,24 +241,25 @@ private:
         return std::get<1>(adapter).get();
     }
 
-    template <uint32_t Timeout, typename Name, typename R, typename Tuple, typename T, typename Func, typename Self>
+    template <std::uint32_t Timeout, typename Name, typename R, typename Tuple, typename T, typename Func,
+              typename Self>
     void async_invoke_impl(Name&& name, method<R, Tuple>&& method, Func T::*func, Self self) {
         method.name(std::forward<Name>(name));
         async_invoke_impl<Timeout>(std::move(method), func, self);
     }
 
-    template <uint32_t Timeout, typename Name, typename R, typename Tuple, typename T, typename Func>
+    template <std::uint32_t Timeout, typename Name, typename R, typename Tuple, typename T, typename Func>
     void async_invoke_impl(Name&& name, method<R, Tuple>&& method, Func T::*func) {
         method.name(std::forward<Name>(name));
         async_invoke_impl<Timeout>(std::move(method), func, static_cast<T*>(nullptr));
     }
 
-    template <uint32_t Timeout, typename R, typename Tuple, typename T, typename Func>
+    template <std::uint32_t Timeout, typename R, typename Tuple, typename T, typename Func>
     void async_invoke_impl(method<R, Tuple>&& method, Func T::*func) {
         async_invoke_impl<Timeout>(std::move(method), func, static_cast<T*>(nullptr));
     }
 
-    template <uint32_t Timeout, typename R, typename Tuple, typename T, typename Func, typename Self,
+    template <std::uint32_t Timeout, typename R, typename Tuple, typename T, typename Func, typename Self,
               typename = std::enable_if_t<std::is_void<R>{}>>
     std::enable_if_t<detail::is_void_result<Func>{}> async_invoke_impl(method<R, Tuple>&& method, Func T::*func,
                                                                        Self self) {
@@ -271,7 +272,7 @@ private:
         });
     }
 
-    template <uint32_t Timeout, typename R, typename Tuple, typename T, typename Func, typename Self,
+    template <std::uint32_t Timeout, typename R, typename Tuple, typename T, typename Func, typename Self,
               typename = std::enable_if_t<!std::is_void<R>{}>>
     std::enable_if_t<detail::is_not_void_result<R, Func>{}> async_invoke_impl(method<R, Tuple>&& method, Func T::*func,
                                                                               Self self) {
@@ -442,7 +443,8 @@ private:
         invokes_.erase(header_.request_id);
     }
 
-    void request(uint64_t request_id, uint32_t timeout, std::string&& payload, detail::request_type request_type) {
+    void request(std::uint64_t request_id, std::uint32_t timeout, std::string&& payload,
+                 detail::request_type request_type) {
         detail::request req;
         req.header.type = request_type;
         req.header.request_id = request_id;
@@ -464,15 +466,15 @@ private:
         // match
         buffers.emplace_back(boost::asio::buffer(&detail::protocol_match, 1));
         // response header
-        buffers.emplace_back(boost::asio::buffer(&req.header.version, sizeof(uint8_t)));
-        buffers.emplace_back(boost::asio::buffer(&req.header.type, sizeof(uint8_t)));
-        buffers.emplace_back(boost::asio::buffer(&req.header.codec, sizeof(uint8_t)));
+        buffers.emplace_back(boost::asio::buffer(&req.header.version, sizeof(std::uint8_t)));
+        buffers.emplace_back(boost::asio::buffer(&req.header.type, sizeof(std::uint8_t)));
+        buffers.emplace_back(boost::asio::buffer(&req.header.codec, sizeof(std::uint8_t)));
         req.header.request_id = detail::to_be(req.header.request_id);
-        buffers.emplace_back(boost::asio::buffer(&req.header.request_id, sizeof(uint64_t)));
+        buffers.emplace_back(boost::asio::buffer(&req.header.request_id, sizeof(std::uint64_t)));
         req.header.timeout = detail::to_be(req.header.timeout);
-        buffers.emplace_back(boost::asio::buffer(&req.header.timeout, sizeof(uint32_t)));
+        buffers.emplace_back(boost::asio::buffer(&req.header.timeout, sizeof(std::uint32_t)));
         req.header.payload_length = detail::to_be(req.header.payload_length);
-        buffers.emplace_back(boost::asio::buffer(&req.header.payload_length, sizeof(uint32_t)));
+        buffers.emplace_back(boost::asio::buffer(&req.header.payload_length, sizeof(std::uint32_t)));
         // payload
         if (req.header.payload_length > 0) {
             buffers.emplace_back(boost::asio::buffer(req.payload.data(), req.payload.size()));
@@ -500,7 +502,7 @@ private:
         return write_queue_.front();
     }
 
-    void release(uint64_t request_id) {
+    void release(std::uint64_t request_id) {
         std::unique_lock<std::mutex> lock{write_queue_mutex_};
         invokes_.erase(request_id);
     }
@@ -509,8 +511,8 @@ private:
 
     class callback_adapter final : safe_noncopyable, public std::enable_shared_from_this<callback_adapter> {
     public:
-        callback_adapter(boost::asio::io_service& engine, uint64_t request_id, uint32_t timeout, result_handler handler,
-                         std::function<void(uint64_t)> releaser) noexcept
+        callback_adapter(boost::asio::io_service& engine, std::uint64_t request_id, std::uint32_t timeout,
+                         result_handler handler, std::function<void(std::uint64_t)> releaser) noexcept
             : engine_{engine},
               request_id_{request_id},
               timeout_{timeout},
@@ -542,10 +544,10 @@ private:
 
     private:
         boost::asio::io_service& engine_;
-        uint64_t request_id_;
-        uint32_t timeout_{0};
+        std::uint64_t request_id_;
+        std::uint32_t timeout_{0};
         result_handler handler_;
-        std::function<void(uint64_t)> releaser_;
+        std::function<void(std::uint64_t)> releaser_;
         std::unique_ptr<boost::asio::steady_timer> timer_;
     };
 
@@ -569,9 +571,9 @@ private:
     char response_header_[sizeof(detail::response_header)];
     detail::response_header header_;
     std::vector<char> payload_;
-    std::unordered_map<uint64_t, std::shared_ptr<callback_adapter>> invokes_;
+    std::unordered_map<std::uint64_t, std::shared_ptr<callback_adapter>> invokes_;
     std::mutex invokes_mutex_;
-    std::atomic<uint64_t> request_id_{0};
+    std::atomic<std::uint64_t> request_id_{0};
     std::queue<detail::request> write_queue_;
     std::mutex write_queue_mutex_;
 };

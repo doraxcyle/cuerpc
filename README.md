@@ -269,7 +269,7 @@ s.serve("great", [](std::string msg) { return test_struct{1, std::move(msg)}; })
 
 创建客户端，指定ip与端口。
 
-#### bool ready([uint32_t milliseconds])
+#### bool ready([std::uint32_t milliseconds])
 
 判断客户端是否已准备就绪，可传入等待超时时间，默认为0，持续等待。
 

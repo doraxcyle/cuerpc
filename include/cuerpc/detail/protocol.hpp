@@ -55,29 +55,29 @@ namespace detail {
 
 constexpr char protocol_match{'@'};
 
-enum class request_type : uint8_t { heartbeat = 0, request, response, oneway };
+enum class request_type : std::uint8_t { heartbeat = 0, request = 1, response = 2, oneway = 3 };
 
-enum class codec_type : uint8_t { msgpack = 0 };
+enum class codec_type : std::uint8_t { msgpack = 0 };
 
-enum class code_type : uint8_t { success = 0, error, exception, timeout, nonsupport };
+enum class error_code : std::uint8_t { success = 0, error = 1, exception = 2, timeout = 3, nonsupport = 4 };
 
 #pragma pack(1)
 struct request_header final {
-    uint8_t version{1};
+    std::uint8_t version{1};
     request_type type;
     codec_type codec{codec_type::msgpack};
-    uint64_t request_id;
-    uint32_t timeout;
-    uint32_t payload_length;
+    std::uint64_t request_id;
+    std::uint32_t timeout;
+    std::uint32_t payload_length;
 };
 
 struct response_header final {
-    uint8_t version{1};
+    std::uint8_t version{1};
     request_type type{request_type::response};
     codec_type codec{codec_type::msgpack};
-    uint64_t request_id;
-    code_type code{code_type::success};
-    uint32_t payload_length{0};
+    std::uint64_t request_id;
+    error_code code{error_code::success};
+    std::uint32_t payload_length{0};
 };
 #pragma pack()
 

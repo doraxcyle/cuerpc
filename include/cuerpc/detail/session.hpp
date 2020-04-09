@@ -168,14 +168,14 @@ private:
         // match
         buffers.emplace_back(boost::asio::buffer(&protocol_match, 1));
         // response header
-        buffers.emplace_back(boost::asio::buffer(&res.header.version, sizeof(uint8_t)));
-        buffers.emplace_back(boost::asio::buffer(&res.header.type, sizeof(uint8_t)));
-        buffers.emplace_back(boost::asio::buffer(&res.header.codec, sizeof(uint8_t)));
+        buffers.emplace_back(boost::asio::buffer(&res.header.version, sizeof(std::uint8_t)));
+        buffers.emplace_back(boost::asio::buffer(&res.header.type, sizeof(std::uint8_t)));
+        buffers.emplace_back(boost::asio::buffer(&res.header.codec, sizeof(std::uint8_t)));
         res.header.request_id = to_be(res.header.request_id);
-        buffers.emplace_back(boost::asio::buffer(&res.header.request_id, sizeof(uint64_t)));
-        buffers.emplace_back(boost::asio::buffer(&res.header.code, sizeof(uint8_t)));
+        buffers.emplace_back(boost::asio::buffer(&res.header.request_id, sizeof(std::uint64_t)));
+        buffers.emplace_back(boost::asio::buffer(&res.header.code, sizeof(std::uint8_t)));
         res.header.payload_length = to_be(res.header.payload_length);
-        buffers.emplace_back(boost::asio::buffer(&res.header.payload_length, sizeof(uint32_t)));
+        buffers.emplace_back(boost::asio::buffer(&res.header.payload_length, sizeof(std::uint32_t)));
         // payload
         if (res.header.payload_length > 0) {
             buffers.emplace_back(boost::asio::buffer(res.payload.data(), res.payload.size()));

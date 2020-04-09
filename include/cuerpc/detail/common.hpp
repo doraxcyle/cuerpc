@@ -39,7 +39,7 @@ class context;
 
 #define SCOPE_BLOCK
 
-enum class error_code : uint8_t { success = 0, error, exception, timeout, nonsupport };
+using detail::error_code;
 
 namespace detail {
 
