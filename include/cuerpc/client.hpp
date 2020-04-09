@@ -202,7 +202,7 @@ private:
             auto func_adapter =
                 std::make_shared<callback_adapter>(engine_, request_id, Timeout, std::move(callback),
                                                    std::bind(&client::release, this, std::placeholders::_1));
-            func_adapter->start();
+            func_adapter->run();
             std::unique_lock<std::mutex> lock{invokes_mutex_};
             invokes_.emplace(request_id, std::move(func_adapter));
         }
@@ -233,7 +233,7 @@ private:
             auto func_adapter =
                 std::make_shared<callback_adapter>(engine_, request_id, Timeout, std::move(callback),
                                                    std::bind(&client::release, this, std::placeholders::_1));
-            func_adapter->start();
+            func_adapter->run();
             std::unique_lock<std::mutex> lock{invokes_mutex_};
             invokes_.emplace(request_id, std::move(func_adapter));
         }
@@ -520,7 +520,7 @@ private:
               releaser_{std::move(releaser)} {
         }
 
-        void start() {
+        void run() {
             if (timeout_ > 0) {
                 timer_ = std::make_unique<boost::asio::steady_timer>(engine_);
                 timer_->expires_from_now(std::chrono::milliseconds{timeout_});

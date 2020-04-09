@@ -37,12 +37,12 @@ namespace rpc {
 
 class server final : safe_noncopyable {
 public:
-    server() noexcept : engines_{detail::engines::default_engines()} {
+    server() noexcept {
     }
 
     virtual ~server() noexcept = default;
 
-    server(server&& rhs) noexcept : engines_{detail::engines::default_engines()} {
+    server(server&& rhs) noexcept {
         swap(rhs);
     }
 
@@ -77,13 +77,14 @@ public:
     }
 
     void run() {
-        engines_.run();
+        detail::engines::default_engines().run();
     }
 
 protected:
     void listen_impl(boost::asio::ip::tcp::resolver::query&& query) {
-        const boost::asio::ip::tcp::endpoint endpoint{*boost::asio::ip::tcp::resolver{engines_.get()}.resolve(query)};
-        acceptor_ = std::make_shared<boost::asio::ip::tcp::acceptor>(engines_.get());
+        auto& engines = detail::engines::default_engines();
+        const boost::asio::ip::tcp::endpoint endpoint{*boost::asio::ip::tcp::resolver{engines.get()}.resolve(query)};
+        acceptor_ = std::make_shared<boost::asio::ip::tcp::acceptor>(engines.get());
         acceptor_->open(endpoint.protocol());
         acceptor_->set_option(boost::asio::ip::tcp::acceptor::reuse_address{true});
         acceptor_->bind(endpoint);
@@ -95,7 +96,7 @@ protected:
         static const auto handler = [](std::shared_ptr<detail::session> session, std::shared_ptr<detail::request> req) {
             detail::dispatcher::instance().dispatch(session, req);
         };
-        auto session = std::make_shared<detail::session>(handler, this->engines_.get());
+        auto session = std::make_shared<detail::session>(handler, detail::engines::default_engines().get());
         this->acceptor_->async_accept(session->socket(), [this, session](boost::system::error_code code) {
             if (!this->acceptor_->is_open()) {
                 return;
@@ -103,14 +104,13 @@ protected:
 
             if (!code) {
                 session->socket().set_option(boost::asio::ip::tcp::no_delay{true});
-                session->start();
+                session->run();
             }
 
             this->do_accept();
         });
     }
 
-    detail::engines& engines_;
     std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor_;
 };
 

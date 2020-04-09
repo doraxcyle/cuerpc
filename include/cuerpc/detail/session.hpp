@@ -51,7 +51,7 @@ public:
         return socket_;
     }
 
-    void start() {
+    void run() {
         do_check_heartbeat();
         do_read_match();
     }
