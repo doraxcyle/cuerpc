@@ -240,9 +240,13 @@ int main(int argc, char** argv) {
 
 ## API
 
+>   类型说明:
+>
+>   `string`: 所有std::string值类型、引用类型或可以转换为std::string的类型。
+
 ### cue::rpc::server
 
-#### cue::rpc::server& serve(const std::string&/std::string&& name, ...)
+#### cue::rpc::server& serve(string name, ...)
 
 注册处理函数。支持多种调用体，可根据实际需求配置回调体调用参数类型。
 
@@ -255,7 +259,7 @@ s.serve("good", [](test_struct&& test) { return std::move(test.msg); });
 s.serve("great", [](std::string msg) { return test_struct{1, std::move(msg)}; });
 ```
 
-#### cue::rpc::server& listen(unsigned port, [const std::string&/std::string&& host])
+#### cue::rpc::server& listen(unsigned port, [string host])
 
 监听端口，host为可选的。
 
@@ -265,7 +269,7 @@ s.serve("great", [](std::string msg) { return test_struct{1, std::move(msg)}; })
 
 ### cue::rpc::client
 
-#### client(const std::string&/std::string&& host, unsigned short port)
+#### client(string host, unsigned short port)
 
 创建客户端，指定ip与端口。
 
@@ -289,7 +293,7 @@ s.serve("great", [](std::string msg) { return test_struct{1, std::move(msg)}; })
 
 停止客户端运行。
 
-#### auto invoke<[timeout]>(const std::string&/std::string&& name, method<...>&& method)
+#### auto invoke<[timeout]>(string name, method<...>&& method)
 
 同步远程调用，timeout为超时时间，可选，默认为0，持续等待。
 
@@ -310,7 +314,7 @@ register_method<int(int, int)> add{"add"};
 auto result = c.invoke(add(11, 12));
 ```
 
-#### auto async_invoke<[timeout]>(const std::string&/std::string&& name, method<...>&& method, Func&& func)
+#### auto async_invoke<[timeout]>(string name, method<...>&& method, Func&& func)
 
 Func分为几种情况。
 
