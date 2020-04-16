@@ -35,7 +35,7 @@ namespace detail {
 
 class dispatcher final : safe_noncopyable {
 public:
-    static dispatcher& instance() {
+    static dispatcher& instance() noexcept {
         static dispatcher dispatcher;
         return dispatcher;
     }

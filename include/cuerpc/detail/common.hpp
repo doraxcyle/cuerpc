@@ -190,7 +190,7 @@ struct is_not_void_result<
 
 // utilities functions
 struct utils final : safe_noncopyable {
-    inline static bool iequals(const std::string& lhs, const std::string& rhs) {
+    inline static bool iequals(const std::string& lhs, const std::string& rhs) noexcept {
         return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
                           [](char l, char r) { return std::tolower(l) == std::tolower(r); });
     }
