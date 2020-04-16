@@ -33,7 +33,7 @@ namespace detail {
 class wait_event final : safe_noncopyable {
 public:
     wait_event() noexcept = default;
-    ~wait_event() noexcept = default;
+    ~wait_event() = default;
 
     void wait() {
         std::unique_lock<std::mutex> lock{stop_mutex_};
@@ -45,7 +45,7 @@ public:
         return stop_wait_.wait_for(lock, std::chrono::milliseconds{milliseconds}, [this]() { return stop_.load(); });
     }
 
-    void stop() {
+    void stop() noexcept {
         stop_ = true;
         stop_wait_.notify_all();
     }

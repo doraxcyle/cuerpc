@@ -45,7 +45,7 @@ public:
         : socket_{engine}, heartbeat_check_timer_{engine}, handler_{std::move(handler)} {
     }
 
-    ~session() noexcept = default;
+    ~session() = default;
 
     tcp_socket& socket() noexcept {
         return socket_;

@@ -42,7 +42,7 @@ public:
         }
     }
 
-    static engines& default_engines() {
+    static engines& default_engines() noexcept {
         static engines engines{std::thread::hardware_concurrency()};
         return engines;
     }

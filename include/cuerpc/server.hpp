@@ -40,7 +40,7 @@ public:
     server() noexcept {
     }
 
-    virtual ~server() noexcept = default;
+    ~server() = default;
 
     server(server&& rhs) noexcept {
         swap(rhs);
