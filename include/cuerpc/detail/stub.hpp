@@ -13,7 +13,7 @@ namespace detail {
 
 struct stub final : safe_noncopyable {
     template <typename T>
-    inline static T unpack(const std::string& payload) {
+    inline static T unpack(std::string_view payload) {
         return msgpack::unpack(payload.data(), payload.size()).get().as<T>();
     }
 

@@ -26,6 +26,23 @@
 #include <memory>
 #include <sstream>
 #include <tuple>
+#if __cplusplus > 201402L
+#include <string_view>
+#else
+#include "cuerpc/3rd_party/string_view.hpp"
+namespace std {
+using namespace nonstd;
+namespace literals {
+using namespace nonstd::literals::string_view_literals;
+namespace string_view_literals {
+using namespace nonstd::literals::string_view_literals;
+} // namespace string_view_literals
+} // namespace literals
+namespace string_view_literals {
+using namespace nonstd::literals::string_view_literals;
+} // namespace string_view_literals
+} // namespace std
+#endif // __cplusplus > 201402L
 #include <boost/asio.hpp>
 
 #include "cuerpc/detail/noncopyable.hpp"
@@ -43,13 +60,14 @@ using detail::error_code;
 
 namespace detail {
 
-inline const char* code_to_msg(error_code code) noexcept;
+inline std::string_view code_to_msg(error_code code) noexcept;
 
 } // namespace detail
 
 class invoke_exception final : public std::runtime_error {
 public:
-    explicit invoke_exception(error_code code) noexcept : std::runtime_error{detail::code_to_msg(code)}, code_{code} {
+    explicit invoke_exception(error_code code) noexcept
+        : std::runtime_error{detail::code_to_msg(code).data()}, code_{code} {
     }
 
     template <typename Msg, typename = std::enable_if_t<!std::is_same<Msg, invoke_exception>{}>>
@@ -80,13 +98,6 @@ struct response final {
 };
 
 // global variables
-struct global_value final : safe_noncopyable {
-    // for empty string const reference
-    static const std::string& empty_string() noexcept {
-        static const std::string empty{""};
-        return empty;
-    }
-};
 
 // meta utilities
 template <typename...>
@@ -190,12 +201,12 @@ struct is_not_void_result<
 
 // utilities functions
 struct utils final : safe_noncopyable {
-    inline static bool iequals(const std::string& lhs, const std::string& rhs) noexcept {
+    inline static bool iequals(std::string_view lhs, std::string_view rhs) noexcept {
         return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
                           [](char l, char r) { return std::tolower(l) == std::tolower(r); });
     }
 
-    inline static std::string to_lower(const std::string& str) noexcept {
+    inline static std::string to_lower(std::string_view str) noexcept {
         std::string lower_str;
         for (const auto& c : str) {
             lower_str += std::tolower(c);
@@ -204,20 +215,21 @@ struct utils final : safe_noncopyable {
     }
 };
 
-inline const char* code_to_msg(error_code code) noexcept {
+inline std::string_view code_to_msg(error_code code) noexcept {
+    using namespace std::literals;
     switch (code) {
     case error_code::success:
-        return "invoke empty result";
+        return "invoke empty result"sv;
     case error_code::error:
-        return "invoke error";
+        return "invoke error"sv;
     case error_code::exception:
-        return "invoke exception";
+        return "invoke exception"sv;
     case error_code::timeout:
-        return "invoke timeout";
+        return "invoke timeout"sv;
     case error_code::nonsupport:
-        return "invoke nonsupport";
+        return "invoke nonsupport"sv;
     default:
-        return "invoke unknown exception";
+        return "invoke unknown exception"sv;
     }
 }
 
