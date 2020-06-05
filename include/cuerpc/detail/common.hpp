@@ -29,7 +29,7 @@
 #if __cplusplus > 201402L
 #include <string_view>
 #else
-#include "cuerpc/3rd_party/string_view.hpp"
+#include "cuerpc/deps/string_view.hpp"
 namespace std {
 using namespace nonstd;
 namespace literals {
@@ -201,12 +201,12 @@ struct is_not_void_result<
 
 // utilities functions
 struct utils final : safe_noncopyable {
-    inline static bool iequals(std::string_view lhs, std::string_view rhs) noexcept {
+    static bool iequals(std::string_view lhs, std::string_view rhs) noexcept {
         return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
                           [](char l, char r) { return std::tolower(l) == std::tolower(r); });
     }
 
-    inline static std::string to_lower(std::string_view str) noexcept {
+    static std::string to_lower(std::string_view str) noexcept {
         std::string lower_str;
         for (const auto& c : str) {
             lower_str += std::tolower(c);
