@@ -242,7 +242,7 @@ public:
     awaitable_promise(const awaitable_promise&) = delete;
     awaitable_promise& operator=(const awaitable_promise&) = delete;
     awaitable_promise(awaitable_promise&&) = default;
-    awaitable_promise& operator=(awaitable_promise&&) noexcept = default;
+    awaitable_promise& operator=(awaitable_promise&&) = default;
 
     future_type get_future() {
         return future_type{this};
