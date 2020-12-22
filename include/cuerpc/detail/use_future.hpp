@@ -35,21 +35,21 @@ struct return_void {
     }
 };
 
-template <typename Callable, typename Signature>
+template <typename _Callable, typename _Signature>
 struct callback_adapter {
-    using callback_type = Callable;
+    using callback_type = _Callable;
     using return_type = return_void;
 
-    inline static std::tuple<callback_type, return_type> traits(Callable&& callback) {
+    inline static std::tuple<callback_type, return_type> traits(_Callable&& callback) {
         return {std::move(callback), {}};
     }
 };
 
-template <typename Promise, typename Result>
+template <typename _Promise, typename _Ret>
 class use_future_handler_base {
 public:
-    using result_type = Result;
-    using promise_type = typename Promise::template promise_type<result_type>;
+    using result_type = _Ret;
+    using promise_type = typename _Promise::template promise_type<result_type>;
 
     use_future_handler_base() noexcept : promise_{std::make_shared<promise_type>()} {
     }
@@ -65,8 +65,8 @@ protected:
 template <typename...>
 struct use_future_handler;
 
-template <typename Promise>
-struct use_future_handler<Promise, error_code> final : use_future_handler_base<Promise, void> {
+template <typename _Promise>
+struct use_future_handler<_Promise, error_code> final : use_future_handler_base<_Promise, void> {
     void operator()(error_code code) const {
         if (code == error_code::success) {
             this->promise_->set_value();
@@ -76,8 +76,8 @@ struct use_future_handler<Promise, error_code> final : use_future_handler_base<P
     }
 };
 
-template <typename Promise, typename Result>
-struct use_future_handler<Promise, error_code, Result> final : use_future_handler_base<Promise, Result> {
+template <typename _Promise, typename _Ret>
+struct use_future_handler<_Promise, error_code, _Ret> final : use_future_handler_base<_Promise, _Ret> {
     template <typename Arg>
     void operator()(error_code code, Arg&& arg) const {
         if (code == error_code::success) {
@@ -88,11 +88,11 @@ struct use_future_handler<Promise, error_code, Result> final : use_future_handle
     }
 };
 
-template <typename Future, typename Result>
+template <typename _Future, typename _Ret>
 class use_future_return final {
 public:
-    using result_type = Result;
-    using future_type = typename Future::template future_type<result_type>;
+    using result_type = _Ret;
+    using future_type = typename _Future::template future_type<result_type>;
 
     use_future_return(future_type&& future) noexcept : future_{std::move(future)} {
     }
@@ -105,14 +105,14 @@ private:
     future_type future_;
 };
 
-template <typename Traits, typename... Results>
+template <typename _Traits, typename... _Rets>
 struct callback_adapter_impl {
-    using traits_type = Traits;
-    using callback_type = use_future_handler<traits_type, Results...>;
+    using traits_type = _Traits;
+    using callback_type = use_future_handler<traits_type, _Rets...>;
     using result_type = typename callback_type::result_type;
     using return_type = use_future_return<traits_type, result_type>;
 
-    inline static std::tuple<callback_type, return_type> traits(const Traits&) {
+    inline static std::tuple<callback_type, return_type> traits(const _Traits&) {
         callback_type callback{};
         auto future = callback.get_future();
         return {std::move(callback), std::move(future)};
@@ -120,15 +120,15 @@ struct callback_adapter_impl {
 };
 
 struct use_std_future_t final {
-    template <typename Result>
-    using promise_type = std::promise<Result>;
+    template <typename _Ret>
+    using promise_type = std::promise<_Ret>;
 
-    template <typename Result>
-    using future_type = std::future<Result>;
+    template <typename _Ret>
+    using future_type = std::future<_Ret>;
 };
 
-template <typename R, typename... Results>
-struct callback_adapter<use_std_future_t, R(Results...)> final : callback_adapter_impl<use_std_future_t, Results...> {};
+template <typename _Ret, typename... _Rets>
+struct callback_adapter<use_std_future_t, _Ret(_Rets...)> final : callback_adapter_impl<use_std_future_t, _Rets...> {};
 
 } // namespace detail
 

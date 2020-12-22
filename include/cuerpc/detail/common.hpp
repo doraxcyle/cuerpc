@@ -70,8 +70,8 @@ public:
         : std::runtime_error{detail::code_to_msg(code).data()}, code_{code} {
     }
 
-    template <typename Msg, typename = std::enable_if_t<!std::is_same<Msg, invoke_exception>{}>>
-    explicit invoke_exception(Msg&& msg) noexcept : std::runtime_error{std::forward<Msg>(msg)}, code_{} {
+    template <typename _Msg, typename = std::enable_if_t<!std::is_same<_Msg, invoke_exception>{}>>
+    explicit invoke_exception(_Msg&& msg) noexcept : std::runtime_error{std::forward<_Msg>(msg)}, code_{} {
     }
 
     error_code code() const noexcept {
@@ -103,100 +103,100 @@ struct response final {
 template <typename...>
 using void_t = void;
 
-template <typename T, typename = void>
+template <typename _Ty, typename = void>
 struct has_operator : std::false_type {};
 
-template <typename T>
-struct has_operator<T, void_t<decltype(&T::operator())>> : std::true_type {};
+template <typename _Ty>
+struct has_operator<_Ty, void_t<decltype(&_Ty::operator())>> : std::true_type {};
 
-template <typename T, typename = void>
+template <typename _Ty, typename = void>
 struct is_functor : std::false_type {};
 
-template <typename T>
-struct is_functor<T, void_t<std::enable_if_t<!std::is_function<T>{} && has_operator<T>{}>>> : std::true_type {};
+template <typename _Ty>
+struct is_functor<_Ty, void_t<std::enable_if_t<!std::is_function<_Ty>{} && has_operator<_Ty>{}>>> : std::true_type {};
 
-template <typename T>
+template <typename _Ty>
 struct to_function;
 
-template <typename T, typename R, typename... Args>
-struct to_function<R (T::*)(Args...) const> {
-    using type = std::function<R(Args...)>;
+template <typename _Ty, typename _Ret, typename... _Args>
+struct to_function<_Ret (_Ty::*)(_Args...) const> {
+    using type = std::function<_Ret(_Args...)>;
 };
 
-template <typename T, typename R, typename... Args>
-struct to_function<R (T::*)(Args...)> {
-    using type = std::function<R(Args...)>;
+template <typename _Ty, typename _Ret, typename... _Args>
+struct to_function<_Ret (_Ty::*)(_Args...)> {
+    using type = std::function<_Ret(_Args...)>;
 };
 
-template <typename T>
-using to_function_t = typename to_function<T>::type;
+template <typename _Ty>
+using to_function_t = typename to_function<_Ty>::type;
 
-template <typename T>
+template <typename _Ty>
 struct function_args;
 
-template <typename R, typename... Args>
-struct function_args<R(Args...)> {
-    using return_type = R;
-    static constexpr std::size_t arity{sizeof...(Args)};
+template <typename _Ret, typename... _Args>
+struct function_args<_Ret(_Args...)> {
+    using return_type = _Ret;
+    static constexpr std::size_t arity{sizeof...(_Args)};
 
-    template <std::size_t N>
+    template <std::size_t _Index>
     struct arg {
-        using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+        using type = typename std::tuple_element<_Index, std::tuple<_Args...>>::type;
     };
 
-    template <std::size_t N>
-    using arg_t = typename arg<N>::type;
+    template <std::size_t _Index>
+    using arg_t = typename arg<_Index>::type;
 };
 
-template <typename R>
-struct function_args<R()> {
-    using return_type = R;
+template <typename _Ret>
+struct function_args<_Ret()> {
+    using return_type = _Ret;
     static constexpr std::size_t arity{0};
 
-    template <std::size_t N>
+    template <std::size_t _Index>
     struct arg {
         using type = void;
     };
 
-    template <std::size_t N>
-    using arg_t = typename arg<N>::type;
+    template <std::size_t _Index>
+    using arg_t = typename arg<_Index>::type;
 };
 
-template <typename R, typename... Args>
-struct function_args<R (*)(Args...)> : function_args<R(Args...)> {};
+template <typename _Ret, typename... _Args>
+struct function_args<_Ret (*)(_Args...)> : function_args<_Ret(_Args...)> {};
 
-template <typename R, typename... Args>
-struct function_args<std::function<R(Args...)>> : function_args<R(Args...)> {};
+template <typename _Ret, typename... _Args>
+struct function_args<std::function<_Ret(_Args...)>> : function_args<_Ret(_Args...)> {};
 
-template <typename R, typename T, typename... Args>
-struct function_args<R (T::*)(Args...)> : function_args<R(Args...)> {};
+template <typename _Ret, typename _Ty, typename... _Args>
+struct function_args<_Ret (_Ty::*)(_Args...)> : function_args<_Ret(_Args...)> {};
 
-template <typename R, typename T, typename... Args>
-struct function_args<R (T::*)(Args...) const> : function_args<R(Args...)> {};
+template <typename _Ret, typename _Ty, typename... _Args>
+struct function_args<_Ret (_Ty::*)(_Args...) const> : function_args<_Ret(_Args...)> {};
 
-template <typename T>
-struct function_args : function_args<decltype(&T::operator())> {};
+template <typename _Ty>
+struct function_args : function_args<decltype(&_Ty::operator())> {};
 
-template <typename T, typename = void>
+template <typename _Ty, typename = void>
 struct is_void_result : std::false_type {};
 
-template <typename Func>
-struct is_void_result<
-    Func,
-    void_t<std::enable_if_t<function_args<std::decay_t<Func>>::arity == 1 &&
-                            std::is_same<error_code, typename function_args<std::decay_t<Func>>::template arg_t<0>>{}>>>
+template <typename _Func>
+struct is_void_result<_Func,
+                      void_t<std::enable_if_t<
+                          function_args<std::decay_t<_Func>>::arity == 1 &&
+                          std::is_same<error_code, typename function_args<std::decay_t<_Func>>::template arg_t<0>>{}>>>
     : std::true_type {};
 
-template <typename R, typename Func, typename = void>
+template <typename _Ret, typename _Func, typename = void>
 struct is_not_void_result : std::false_type {};
 
-template <typename R, typename Func>
+template <typename _Ret, typename _Func>
 struct is_not_void_result<
-    R, Func,
+    _Ret, _Func,
     void_t<std::enable_if_t<
-        function_args<std::decay_t<Func>>::arity == 2 &&
-        std::is_same<error_code, typename function_args<std::decay_t<Func>>::template arg_t<0>>{} &&
-        std::is_same<R, std::decay_t<typename function_args<std::decay_t<Func>>::template arg_t<1>>>{}>>>
+        function_args<std::decay_t<_Func>>::arity == 2 &&
+        std::is_same<error_code, typename function_args<std::decay_t<_Func>>::template arg_t<0>>{} &&
+        std::is_same<_Ret, std::decay_t<typename function_args<std::decay_t<_Func>>::template arg_t<1>>>{}>>>
     : std::true_type {};
 
 // utilities functions

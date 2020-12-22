@@ -12,15 +12,15 @@ namespace rpc {
 namespace detail {
 
 struct stub final : safe_noncopyable {
-    template <typename T>
-    inline static T unpack(std::string_view payload) {
-        return msgpack::unpack(payload.data(), payload.size()).get().as<T>();
+    template <typename _Ty>
+    inline static _Ty unpack(std::string_view payload) {
+        return msgpack::unpack(payload.data(), payload.size()).get().as<_Ty>();
     }
 
-    template <typename... Args>
-    inline static std::string pack(Args&&... args) {
+    template <typename... _Args>
+    inline static std::string pack(_Args&&... args) {
         std::stringstream ss;
-        msgpack::pack(ss, std::forward_as_tuple(std::forward<Args>(args)...));
+        msgpack::pack(ss, std::forward_as_tuple(std::forward<_Args>(args)...));
         return ss.str();
     }
 };

@@ -32,15 +32,15 @@ namespace rpc {
 
 namespace detail {
 
-template <typename T>
+template <typename _Ty>
 class awaitable_promise;
 
 } // namespace detail
 
-template <typename T>
+template <typename _Ty>
 class awaitable_future {
 public:
-    using promise_type = detail::awaitable_promise<T>;
+    using promise_type = detail::awaitable_promise<_Ty>;
 
     awaitable_future() noexcept = default;
     awaitable_future(const awaitable_future&) = delete;
@@ -72,7 +72,7 @@ public:
     }
 
     // for coroutine
-    T await_resume() noexcept {
+    _Ty await_resume() noexcept {
         return promise_->get();
     }
 
@@ -80,10 +80,10 @@ private:
     template <typename>
     friend class detail::awaitable_promise;
 
-    explicit awaitable_future(detail::awaitable_promise<T>* promise) noexcept : promise_{promise} {
+    explicit awaitable_future(detail::awaitable_promise<_Ty>* promise) noexcept : promise_{promise} {
     }
 
-    detail::awaitable_promise<T>* promise_{nullptr};
+    detail::awaitable_promise<_Ty>* promise_{nullptr};
 };
 
 namespace detail {
@@ -184,11 +184,11 @@ private:
     }
 };
 
-template <typename T>
+template <typename _Ty>
 class awaitable_promise final : public awaitable_promise_base {
 public:
-    using promise_type = awaitable_promise<T>;
-    using future_type = awaitable_future<T>;
+    using promise_type = awaitable_promise<_Ty>;
+    using future_type = awaitable_future<_Ty>;
 
     awaitable_promise() noexcept = default;
     awaitable_promise(const awaitable_promise&) = delete;
@@ -206,21 +206,21 @@ public:
     };
 
     // for coroutine
-    template <typename Value>
-    void return_value(Value&& value) {
-        set_value(std::forward<Value>(value));
+    template <typename _Value>
+    void return_value(_Value&& value) {
+        set_value(std::forward<_Value>(value));
     }
 
-    template <typename Value>
-    void set_value(Value&& value) {
-        std::call_once(state_->flag(), [this, value = std::forward<Value>(value)]() {
+    template <typename _Value>
+    void set_value(_Value&& value) {
+        std::call_once(state_->flag(), [this, value = std::forward<_Value>(value)]() {
             result_ = std::move(value);
             state_->ready(true);
             handle_.resume();
         });
     }
 
-    T get() {
+    _Ty get() {
         if (!state_->ready()) {
             exception_ = std::make_exception_ptr(invoke_exception{"no value"});
         }
@@ -229,7 +229,7 @@ public:
     }
 
 private:
-    T result_;
+    _Ty result_;
 };
 
 template <>
@@ -273,22 +273,22 @@ public:
 };
 
 struct use_awaitable_t final {
-    template <typename Result>
-    using promise_type = awaitable_promise<Result>;
+    template <typename _Ret>
+    using promise_type = awaitable_promise<_Ret>;
 
-    template <typename Result>
-    using future_type = awaitable_future<Result>;
+    template <typename _Ret>
+    using future_type = awaitable_future<_Ret>;
 };
 
-template <typename R, typename... Results>
-struct callback_adapter<use_awaitable_t, R(Results...)> final : callback_adapter_impl<use_awaitable_t, Results...> {};
+template <typename _Ret, typename... _Rets>
+struct callback_adapter<use_awaitable_t, _Ret(_Rets...)> final : callback_adapter_impl<use_awaitable_t, _Rets...> {};
 
 } // namespace detail
 
 constexpr detail::use_awaitable_t use_awaitable{};
 
-template <typename T>
-using awaitable_t = awaitable_future<T>;
+template <typename _Ty>
+using awaitable_t = awaitable_future<_Ty>;
 
 using awaitable = awaitable_t<void>;
 

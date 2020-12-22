@@ -23,9 +23,9 @@
 #include <type_traits>
 #if defined(_MSC_VER)
 #include <stdlib.h>
-#define cue_bswap_16 _byteswap_ushort
-#define cue_bswap_32 _byteswap_ulong
-#define cue_bswap_64 _byteswap_uint64
+#define cue_bswap_16   _byteswap_ushort
+#define cue_bswap_32   _byteswap_ulong
+#define cue_bswap_64   _byteswap_uint64
 #define bswap_be(bits) cue_bswap_##bits
 #define bswap_le(bits)
 #elif defined(__APPLE__)
@@ -50,7 +50,7 @@ namespace cue {
 namespace rpc {
 namespace detail {
 
-template <std::size_t Bits>
+template <std::size_t _Bits>
 struct swapper;
 
 template <>
@@ -97,28 +97,28 @@ struct swapper<8> {
     }
 };
 
-template <typename T>
-inline T from_be(T t) {
-    const auto value = static_cast<std::make_unsigned_t<T>>(t);
-    return static_cast<T>(swapper<sizeof(value)>::swap_be(t));
+template <typename _Ty>
+inline _Ty from_be(_Ty t) {
+    const auto value = static_cast<std::make_unsigned_t<_Ty>>(t);
+    return static_cast<_Ty>(swapper<sizeof(value)>::swap_be(t));
 }
 
-template <typename T>
-inline T to_be(T t) {
-    const auto value = static_cast<std::make_unsigned_t<T>>(t);
-    return static_cast<T>(swapper<sizeof(value)>::swap_be(t));
+template <typename _Ty>
+inline _Ty to_be(_Ty t) {
+    const auto value = static_cast<std::make_unsigned_t<_Ty>>(t);
+    return static_cast<_Ty>(swapper<sizeof(value)>::swap_be(t));
 }
 
-template <typename T>
-inline T from_le(T t) {
-    const auto value = static_cast<std::make_unsigned_t<T>>(t);
-    return static_cast<T>(swapper<sizeof(value)>::swap_le(t));
+template <typename _Ty>
+inline _Ty from_le(_Ty t) {
+    const auto value = static_cast<std::make_unsigned_t<_Ty>>(t);
+    return static_cast<_Ty>(swapper<sizeof(value)>::swap_le(t));
 }
 
-template <typename T>
-inline T to_le(T t) {
-    const auto value = static_cast<std::make_unsigned_t<T>>(t);
-    return static_cast<T>(swapper<sizeof(value)>::swap_le(t));
+template <typename _Ty>
+inline _Ty to_le(_Ty t) {
+    const auto value = static_cast<std::make_unsigned_t<_Ty>>(t);
+    return static_cast<_Ty>(swapper<sizeof(value)>::swap_le(t));
 }
 
 } // namespace detail

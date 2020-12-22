@@ -57,9 +57,9 @@ public:
         }
     }
 
-    template <typename Name, typename... Args>
-    server& serve(Name&& name, Args&&... args) {
-        detail::dispatcher::instance().serve(std::forward<Name>(name), std::forward<Args>(args)...);
+    template <typename _Name, typename... _Args>
+    server& serve(_Name&& name, _Args&&... args) {
+        detail::dispatcher::instance().serve(std::forward<_Name>(name), std::forward<_Args>(args)...);
         return *this;
     }
 
@@ -69,10 +69,10 @@ public:
         return *this;
     }
 
-    template <typename Host>
-    server& listen(unsigned short port, Host&& host) {
+    template <typename _Host>
+    server& listen(unsigned short port, _Host&& host) {
         assert(port != 0);
-        listen_impl(boost::asio::ip::tcp::resolver::query{std::forward<Host>(host), std::to_string(port)});
+        listen_impl(boost::asio::ip::tcp::resolver::query{std::forward<_Host>(host), std::to_string(port)});
         return *this;
     }
 

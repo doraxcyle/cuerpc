@@ -42,14 +42,14 @@
 namespace cue {
 namespace rpc {
 
-template <typename R, typename Tuple>
+template <typename _Ret, typename _Tuple>
 class method final {
 public:
-    explicit method(Tuple&& t) noexcept : t_{std::move(t)} {
+    explicit method(_Tuple&& t) noexcept : t_{std::move(t)} {
     }
 
-    template <typename Name>
-    method(Tuple&& t, Name&& name) noexcept : t_{std::move(t)}, name_{std::forward<Name>(name)} {
+    template <typename _Name>
+    method(_Tuple&& t, _Name&& name) noexcept : t_{std::move(t)}, name_{std::forward<_Name>(name)} {
     }
 
     std::string name() const noexcept {
@@ -57,50 +57,50 @@ public:
         return std::move(name_);
     }
 
-    template <typename Name>
-    void name(Name&& name) {
-        name_ = std::forward<Name>(name);
+    template <typename _Name>
+    void name(_Name&& name) {
+        name_ = std::forward<_Name>(name);
     }
 
-    Tuple args() const noexcept {
+    _Tuple args() const noexcept {
         return std::move(t_);
     }
 
 private:
-    Tuple t_;
+    _Tuple t_;
     std::string name_;
 };
 
-template <typename T>
+template <typename _Ty>
 class register_method;
 
-template <typename R, typename... Args>
-class register_method<R(Args...)> final {
+template <typename _Ret, typename... _Args>
+class register_method<_Ret(_Args...)> final {
 public:
-    template <typename Name, typename = std::enable_if_t<!std::is_same<Name, register_method>{}>>
-    explicit register_method(Name&& name) noexcept : name_{std::forward<Name>(name)} {
+    template <typename _Name, typename = std::enable_if_t<!std::is_same<_Name, register_method>{}>>
+    explicit register_method(_Name&& name) noexcept : name_{std::forward<_Name>(name)} {
     }
 
-    decltype(auto) operator()(Args... args) const noexcept {
+    decltype(auto) operator()(_Args... args) const noexcept {
         auto args_tuple = std::forward_as_tuple(args...);
-        return method<R, std::tuple<std::decay_t<Args>...>>{std::move(args_tuple), name_};
+        return method<_Ret, std::tuple<std::decay_t<_Args>...>>{std::move(args_tuple), name_};
     }
 
 private:
     std::string name_;
 };
 
-template <typename R, typename... Args>
-decltype(auto) make_method(Args&&... args) noexcept {
-    auto args_tuple = std::forward_as_tuple(std::forward<Args>(args)...);
-    return method<R, std::tuple<std::decay_t<Args>...>>{std::move(args_tuple)};
+template <typename _Ret, typename... _Args>
+decltype(auto) make_method(_Args&&... args) noexcept {
+    auto args_tuple = std::forward_as_tuple(std::forward<_Args>(args)...);
+    return method<_Ret, std::tuple<std::decay_t<_Args>...>>{std::move(args_tuple)};
 }
 
 class client final : safe_noncopyable {
 public:
-    template <typename Host>
-    client(Host&& host, unsigned short port) noexcept
-        : host_{std::forward<Host>(host)},
+    template <typename _Host>
+    client(_Host&& host, unsigned short port) noexcept
+        : host_{std::forward<_Host>(host)},
           port_{port},
           engine_work_{engine_},
           socket_{engine_},
@@ -139,35 +139,35 @@ public:
         engine_.stop();
     }
 
-    template <std::uint32_t Timeout = 0, typename... Args>
-    auto invoke(Args&&... args) {
-        return invoke_impl<Timeout>(std::forward<Args>(args)...);
+    template <std::uint32_t _Timeout = 0, typename... _Args>
+    auto invoke(_Args&&... args) {
+        return invoke_impl<_Timeout>(std::forward<_Args>(args)...);
     }
 
-    template <std::uint32_t Timeout = 0, typename... Args>
-    auto async_invoke(Args&&... args) {
-        return async_invoke_impl<Timeout>(std::forward<Args>(args)...);
+    template <std::uint32_t _Timeout = 0, typename... _Args>
+    auto async_invoke(_Args&&... args) {
+        return async_invoke_impl<_Timeout>(std::forward<_Args>(args)...);
     }
 
-    template <typename... Args>
-    void invoke_oneway(Args&&... args) {
-        invoke_oneway_impl(std::forward<Args>(args)...);
+    template <typename... _Args>
+    void invoke_oneway(_Args&&... args) {
+        invoke_oneway_impl(std::forward<_Args>(args)...);
     }
 
 private:
-    template <std::uint32_t Timeout, typename Name, typename R, typename Tuple>
-    auto invoke_impl(Name&& name, method<R, Tuple>&& method) {
-        method.name(std::forward<Name>(name));
-        return invoke_impl<Timeout>(std::move(method));
+    template <std::uint32_t _Timeout, typename _Name, typename _Ret, typename _Tuple>
+    auto invoke_impl(_Name&& name, method<_Ret, _Tuple>&& method) {
+        method.name(std::forward<_Name>(name));
+        return invoke_impl<_Timeout>(std::move(method));
     }
 
-    template <std::uint32_t Timeout, typename R, typename Tuple>
-    auto invoke_impl(method<R, Tuple>&& method) {
-        auto result = async_invoke<Timeout>(std::move(method), use_std_future);
-        if (Timeout == 0) {
+    template <std::uint32_t _Timeout, typename _Ret, typename _Tuple>
+    auto invoke_impl(method<_Ret, _Tuple>&& method) {
+        auto result = async_invoke<_Timeout>(std::move(method), use_std_future);
+        if (_Timeout == 0) {
             result.wait();
         } else {
-            const auto status = result.wait_for(std::chrono::milliseconds{Timeout});
+            const auto status = result.wait_for(std::chrono::milliseconds{_Timeout});
             if (status == std::future_status::deferred) {
                 throw invoke_exception{"wait result deferred"};
             }
@@ -179,120 +179,120 @@ private:
         return result.get();
     }
 
-    template <std::uint32_t Timeout, typename Name, typename R, typename Tuple, typename Func>
-    auto async_invoke_impl(Name&& name, method<R, Tuple>&& method, Func&& func) {
-        method.name(std::forward<Name>(name));
-        return async_invoke_impl<Timeout>(std::move(method), std::forward<Func>(func), std::is_void<R>{});
+    template <std::uint32_t _Timeout, typename _Name, typename _Ret, typename _Tuple, typename _Func>
+    auto async_invoke_impl(_Name&& name, method<_Ret, _Tuple>&& method, _Func&& func) {
+        method.name(std::forward<_Name>(name));
+        return async_invoke_impl<_Timeout>(std::move(method), std::forward<_Func>(func), std::is_void<_Ret>{});
     }
 
-    template <std::uint32_t Timeout, typename R, typename Tuple, typename Func>
-    auto async_invoke_impl(method<R, Tuple>&& method, Func&& func) {
-        return async_invoke_impl<Timeout>(std::move(method), std::forward<Func>(func), std::is_void<R>{});
+    template <std::uint32_t _Timeout, typename _Ret, typename _Tuple, typename _Func>
+    auto async_invoke_impl(method<_Ret, _Tuple>&& method, _Func&& func) {
+        return async_invoke_impl<_Timeout>(std::move(method), std::forward<_Func>(func), std::is_void<_Ret>{});
     }
 
-    template <std::uint32_t Timeout, typename R, typename Tuple, typename Func>
-    auto async_invoke_impl(method<R, Tuple>&& method, Func&& func, std::true_type) {
-        using adapter_type = detail::callback_adapter<std::decay_t<Func>, void(error_code)>;
-        auto adapter = adapter_type::traits(std::forward<Func>(func));
+    template <std::uint32_t _Timeout, typename _Ret, typename _Tuple, typename _Func>
+    auto async_invoke_impl(method<_Ret, _Tuple>&& method, _Func&& func, std::true_type) {
+        using adapter_type = detail::callback_adapter<std::decay_t<_Func>, void(error_code)>;
+        auto adapter = adapter_type::traits(std::forward<_Func>(func));
         const std::uint64_t request_id{request_id_++};
         SCOPE_BLOCK {
             auto callback = [func = std::move(std::get<0>(adapter))](error_code code, std::string&& payload) {
                 func(code);
             };
             auto func_adapter =
-                std::make_shared<callback_adapter>(engine_, request_id, Timeout, std::move(callback),
+                std::make_shared<callback_adapter>(engine_, request_id, _Timeout, std::move(callback),
                                                    std::bind(&client::release, this, std::placeholders::_1));
             func_adapter->run();
             std::unique_lock<std::mutex> lock{invokes_mutex_};
             invokes_.emplace(request_id, std::move(func_adapter));
         }
-        request(request_id, Timeout, detail::stub::pack(method.name(), method.args()), detail::request_type::request);
+        request(request_id, _Timeout, detail::stub::pack(method.name(), method.args()), detail::request_type::request);
         return std::get<1>(adapter).get();
     }
 
-    template <std::uint32_t Timeout, typename R, typename Tuple, typename Func>
-    auto async_invoke_impl(method<R, Tuple>&& method, Func&& func, std::false_type) {
-        using adapter_type = detail::callback_adapter<std::decay_t<Func>, void(error_code, R)>;
-        auto adapter = adapter_type::traits(std::forward<Func>(func));
+    template <std::uint32_t _Timeout, typename _Ret, typename _Tuple, typename _Func>
+    auto async_invoke_impl(method<_Ret, _Tuple>&& method, _Func&& func, std::false_type) {
+        using adapter_type = detail::callback_adapter<std::decay_t<_Func>, void(error_code, _Ret)>;
+        auto adapter = adapter_type::traits(std::forward<_Func>(func));
         const std::uint64_t request_id{request_id_++};
         SCOPE_BLOCK {
             auto callback = [func = std::move(std::get<0>(adapter))](error_code code, std::string&& payload) {
                 if (code != error_code::success || payload.empty()) {
-                    func(code, R{});
+                    func(code, _Ret{});
                 } else {
-                    R result;
+                    _Ret result;
                     try {
-                        result = std::get<0>(detail::stub::unpack<std::tuple<R>>(payload));
+                        result = std::get<0>(detail::stub::unpack<std::tuple<_Ret>>(payload));
                     } catch (...) {
-                        func(error_code::exception, R{});
+                        func(error_code::exception, _Ret{});
                         return;
                     }
                     func(code, std::move(result));
                 }
             };
             auto func_adapter =
-                std::make_shared<callback_adapter>(engine_, request_id, Timeout, std::move(callback),
+                std::make_shared<callback_adapter>(engine_, request_id, _Timeout, std::move(callback),
                                                    std::bind(&client::release, this, std::placeholders::_1));
             func_adapter->run();
             std::unique_lock<std::mutex> lock{invokes_mutex_};
             invokes_.emplace(request_id, std::move(func_adapter));
         }
-        request(request_id, Timeout, detail::stub::pack(method.name(), method.args()), detail::request_type::request);
+        request(request_id, _Timeout, detail::stub::pack(method.name(), method.args()), detail::request_type::request);
         return std::get<1>(adapter).get();
     }
 
-    template <std::uint32_t Timeout, typename Name, typename R, typename Tuple, typename T, typename Func,
-              typename Self>
-    void async_invoke_impl(Name&& name, method<R, Tuple>&& method, Func T::*func, Self self) {
-        method.name(std::forward<Name>(name));
-        async_invoke_impl<Timeout>(std::move(method), func, self);
+    template <std::uint32_t _Timeout, typename _Name, typename _Ret, typename _Tuple, typename _Ty, typename _Func,
+              typename _Self>
+    void async_invoke_impl(_Name&& name, method<_Ret, _Tuple>&& method, _Func _Ty::*func, _Self self) {
+        method.name(std::forward<_Name>(name));
+        async_invoke_impl<_Timeout>(std::move(method), func, self);
     }
 
-    template <std::uint32_t Timeout, typename Name, typename R, typename Tuple, typename T, typename Func>
-    void async_invoke_impl(Name&& name, method<R, Tuple>&& method, Func T::*func) {
-        method.name(std::forward<Name>(name));
-        async_invoke_impl<Timeout>(std::move(method), func, static_cast<T*>(nullptr));
+    template <std::uint32_t _Timeout, typename _Name, typename _Ret, typename _Tuple, typename _Ty, typename _Func>
+    void async_invoke_impl(_Name&& name, method<_Ret, _Tuple>&& method, _Func _Ty::*func) {
+        method.name(std::forward<_Name>(name));
+        async_invoke_impl<_Timeout>(std::move(method), func, static_cast<_Ty*>(nullptr));
     }
 
-    template <std::uint32_t Timeout, typename R, typename Tuple, typename T, typename Func>
-    void async_invoke_impl(method<R, Tuple>&& method, Func T::*func) {
-        async_invoke_impl<Timeout>(std::move(method), func, static_cast<T*>(nullptr));
+    template <std::uint32_t _Timeout, typename _Ret, typename _Tuple, typename _Ty, typename _Func>
+    void async_invoke_impl(method<_Ret, _Tuple>&& method, _Func _Ty::*func) {
+        async_invoke_impl<_Timeout>(std::move(method), func, static_cast<_Ty*>(nullptr));
     }
 
-    template <std::uint32_t Timeout, typename R, typename Tuple, typename T, typename Func, typename Self,
-              typename = std::enable_if_t<std::is_void<R>{}>>
-    std::enable_if_t<detail::is_void_result<Func>{}> async_invoke_impl(method<R, Tuple>&& method, Func T::*func,
-                                                                       Self self) {
-        async_invoke_impl<Timeout>(std::move(method), [func, self](error_code code) {
+    template <std::uint32_t _Timeout, typename _Ret, typename _Tuple, typename _Ty, typename _Func, typename _Self,
+              typename = std::enable_if_t<std::is_void<_Ret>{}>>
+    std::enable_if_t<detail::is_void_result<_Func>{}> async_invoke_impl(method<_Ret, _Tuple>&& method, _Func _Ty::*func,
+                                                                        _Self self) {
+        async_invoke_impl<_Timeout>(std::move(method), [func, self](error_code code) {
             if (self) {
                 (self->*func)(code);
             } else {
-                (T{}.*func)(code);
+                (_Ty{}.*func)(code);
             }
         });
     }
 
-    template <std::uint32_t Timeout, typename R, typename Tuple, typename T, typename Func, typename Self,
-              typename = std::enable_if_t<!std::is_void<R>{}>>
-    std::enable_if_t<detail::is_not_void_result<R, Func>{}> async_invoke_impl(method<R, Tuple>&& method, Func T::*func,
-                                                                              Self self) {
-        async_invoke_impl<Timeout>(std::move(method), [func, self](error_code code, R&& result) {
+    template <std::uint32_t _Timeout, typename _Ret, typename _Tuple, typename _Ty, typename _Func, typename _Self,
+              typename = std::enable_if_t<!std::is_void<_Ret>{}>>
+    std::enable_if_t<detail::is_not_void_result<_Ret, _Func>{}> async_invoke_impl(method<_Ret, _Tuple>&& method,
+                                                                                  _Func _Ty::*func, _Self self) {
+        async_invoke_impl<_Timeout>(std::move(method), [func, self](error_code code, _Ret&& result) {
             if (self) {
                 (self->*func)(code, std::move(result));
             } else {
-                (T{}.*func)(code, std::move(result));
+                (_Ty{}.*func)(code, std::move(result));
             }
         });
     }
 
-    template <typename Name, typename R, typename Tuple>
-    void invoke_oneway_impl(Name&& name, method<R, Tuple>&& method) {
-        method.name(std::forward<Name>(name));
+    template <typename _Name, typename _Ret, typename _Tuple>
+    void invoke_oneway_impl(_Name&& name, method<_Ret, _Tuple>&& method) {
+        method.name(std::forward<_Name>(name));
         invoke_oneway_impl(std::move(method));
     }
 
-    template <typename R, typename Tuple>
-    void invoke_oneway_impl(method<R, Tuple>&& method) {
+    template <typename _Ret, typename _Tuple>
+    void invoke_oneway_impl(method<_Ret, _Tuple>&& method) {
         request(request_id_++, 0, detail::stub::pack(method.name(), method.args()), detail::request_type::oneway);
     }
 
