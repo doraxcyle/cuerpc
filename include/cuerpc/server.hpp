@@ -84,7 +84,7 @@ protected:
     void listen_impl(boost::asio::ip::tcp::resolver::query&& query) {
         auto& engines = detail::engines::default_engines();
         const boost::asio::ip::tcp::endpoint endpoint{*boost::asio::ip::tcp::resolver{engines.get()}.resolve(query)};
-        acceptor_ = std::make_shared<boost::asio::ip::tcp::acceptor>(engines.get());
+        acceptor_ = std::make_unique<boost::asio::ip::tcp::acceptor>(engines.get());
         acceptor_->open(endpoint.protocol());
         acceptor_->set_option(boost::asio::ip::tcp::acceptor::reuse_address{true});
         acceptor_->bind(endpoint);
@@ -94,7 +94,7 @@ protected:
 
     void do_accept() {
         static const auto handler = [](std::shared_ptr<detail::session> session, std::shared_ptr<detail::request> req) {
-            detail::dispatcher::instance().dispatch(session, req);
+            detail::dispatcher::instance().dispatch(std::move(session), std::move(req));
         };
         auto session = std::make_shared<detail::session>(handler, detail::engines::default_engines().get());
         this->acceptor_->async_accept(session->socket(), [this, session](boost::system::error_code code) {
@@ -111,7 +111,7 @@ protected:
         });
     }
 
-    std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor_;
+    std::unique_ptr<boost::asio::ip::tcp::acceptor> acceptor_;
 };
 
 } // namespace rpc

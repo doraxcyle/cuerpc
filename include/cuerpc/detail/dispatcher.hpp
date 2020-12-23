@@ -60,16 +60,16 @@ public:
         try {
             invoke_name = std::get<0>(stub::unpack<std::tuple<std::string>>(req->payload));
         } catch (...) {
-            reply(session, req, "", error_code::exception);
+            reply(std::move(session), std::move(req), "", error_code::exception);
             return;
         }
         const auto it = invokes_.find(invoke_name);
         if (it != invokes_.end()) {
-            return it->second(session, req);
+            return it->second(std::move(session), std::move(req));
         }
 
         // nonsupport
-        reply(session, req, "", error_code::nonsupport);
+        reply(std::move(session), std::move(req), "", error_code::nonsupport);
     }
 
 private:
@@ -80,7 +80,7 @@ private:
         invokes_.emplace(
             std::forward<_Name>(name),
             [this, func = std::forward<_Func>(func)](std::shared_ptr<session> session, std::shared_ptr<request> req) {
-                this->invoke(std::move(func), session, req, is_functor<_Func>{});
+                this->invoke(std::move(func), std::move(session), std::move(req), is_functor<_Func>{});
             });
     }
 
@@ -88,38 +88,38 @@ private:
     void add_func(_Name&& name, _Func _Ty::*func, _Self self) {
         invokes_.emplace(std::forward<_Name>(name),
                          [this, func, self](std::shared_ptr<session> session, std::shared_ptr<request> req) {
-                             this->invoke(func, self, session, req);
+                             this->invoke(func, self, std::move(session), std::move(req));
                          });
     }
 
     template <typename _Func>
     inline static void invoke(_Func func, std::shared_ptr<session> session, std::shared_ptr<request> req,
                               std::false_type) {
-        invoke_proxy(func, session, req);
+        invoke_proxy(func, std::move(session), std::move(req));
     }
 
     template <typename _Func, typename = void_t<decltype(&_Func::operator())>>
     inline static void invoke(_Func func, std::shared_ptr<session> session, std::shared_ptr<request> req,
                               std::true_type) {
-        invoke_proxy(to_function_t<decltype(&_Func::operator())>(func), session, req);
+        invoke_proxy(to_function_t<decltype(&_Func::operator())>(func), std::move(session), std::move(req));
     }
 
     template <typename _Ty, typename _Func, typename _Self>
     inline static void invoke(_Func _Ty::*func, _Self self, std::shared_ptr<session> session,
                               std::shared_ptr<request> req) {
-        invoke_proxy(func, self, session, req);
+        invoke_proxy(func, self, std::move(session), std::move(req));
     }
 
     template <typename _Ret, typename... _Args>
     inline static void invoke_proxy(_Ret (*func)(_Args...), std::shared_ptr<session> session,
                                     std::shared_ptr<request> req) {
-        invoke_proxy(std::function<_Ret(_Args...)>(func), session, req);
+        invoke_proxy(std::function<_Ret(_Args...)>(func), std::move(session), std::move(req));
     }
 
     template <typename _Ret, typename _Ty, typename _Self, typename... _Args>
     inline static void invoke_proxy(_Ret (_Ty::*func)(_Args...) const, _Self self, std::shared_ptr<session> session,
                                     std::shared_ptr<request> req) {
-        invoke_proxy(std::decay_t<decltype(func)>(func), self, session, req);
+        invoke_proxy(std::decay_t<decltype(func)>(func), self, std::move(session), std::move(req));
     }
 
     template <typename _Ret, typename... _Args>
@@ -129,11 +129,11 @@ private:
         try {
             args_tuple = stub::unpack<std::tuple<std::string, std::tuple<std::decay_t<_Args>...>>>(req->payload);
         } catch (...) {
-            reply(session, req, "", error_code::exception);
+            reply(std::move(session), std::move(req), "", error_code::exception);
             return;
         }
         auto payload = apply<_Ret>(std::move(func), std::move(std::get<1>(args_tuple)));
-        reply(session, req, std::move(payload));
+        reply(std::move(session), std::move(req), std::move(payload));
     }
 
     template <typename _Ret, typename _Ty, typename _Self, typename... _Args>
@@ -143,7 +143,7 @@ private:
         try {
             args_tuple = stub::unpack<std::tuple<std::string, std::tuple<std::decay_t<_Args>...>>>(req->payload);
         } catch (...) {
-            reply(session, req, "", error_code::exception);
+            reply(std::move(session), std::move(req), "", error_code::exception);
             return;
         }
         auto wrapper = [=](_Args... args) {
@@ -154,7 +154,7 @@ private:
             }
         };
         auto payload = apply<_Ret>(std::move(wrapper), std::move(std::get<1>(args_tuple)));
-        reply(session, req, std::move(payload));
+        reply(std::move(session), std::move(req), std::move(payload));
     }
 
     template <typename _Ret, typename _Func, typename _Tuple>
